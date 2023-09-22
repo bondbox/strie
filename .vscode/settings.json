@@ -1,0 +1,25 @@
+{
+    "python.analysis.importFormat": "relative",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.formatting.provider": "yapf",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintArgs": [
+        "--errors-only"
+    ],
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--ignore=C901,E117,E121,E122,E123,E124,E125,E126,E127,E128,E129,E131,E251,E402,H202,H216,H405,W503,W504,W605",
+        "--max-line-length=80"
+    ],
+    "python.testing.unittestEnabled": true,
+    "pylint.args": [
+        "--errors-only"
+    ],
+    "isort.check": true,
+    "isort.args": [
+        "--force-alphabetical-sort-within-sections",
+        "--force-sort-within-sections",
+        "--force-single-line-imports",
+    ],
+}
