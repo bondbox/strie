@@ -1,0 +1,5 @@
+
+coverage>=4.5.1
+eventlet>=0.13.0
+stestr>=2.0.0
+mock
