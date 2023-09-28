@@ -10,14 +10,16 @@ from .utils import testkey
 
 class radix:
 
-    SPLIT = 32
+    LEAFS = 8
     NODES = 256
 
-    def __init__(self, prefix: str = ""):
+    def __init__(self, prefix: str = "", threshold: int = 16):
+        assert isinstance(threshold, int) and threshold >= radix.LEAFS
         assert testkey(key=prefix)
         self.__prefix: str = prefix
         self.__length: int = len(prefix)
         self.__modify: bool = False
+        self.__thold: int = threshold
         self.__nodes: List[Optional[radix]] = [None] * radix.NODES
         self.__stats: List[int] = [0] * radix.NODES
         self.__leafs: Dict[str, Any] = {}
@@ -137,7 +139,7 @@ class radix:
             tmp.__iter_init(prev=obj)
             obj = tmp.__iter_curr
 
-    def __split(self, index: int):
+    def __node_split(self, index: int):
         '''
         split new node
         '''
@@ -147,7 +149,7 @@ class radix:
             assert obj.__nodes[index] is None
 
             prefix: str = f"{index:02x}"
-            newobj: radix = radix(prefix=prefix)
+            newobj: radix = radix(prefix=prefix, threshold=self.__thold)
             for k, v in obj.__leafs.items():
                 if k[:2] == prefix:
                     newobj.__leafs[k[2:]] = v
@@ -164,7 +166,7 @@ class radix:
             for i in range(radix.NODES + 1):
                 if i >= radix.NODES:
                     return
-                if newobj.__stats[i] >= radix.SPLIT:
+                if newobj.__stats[i] >= obj.__thold:
                     obj = newobj
                     index = i
                     break
@@ -203,8 +205,8 @@ class radix:
 
             obj.__leafs[key] = value
             obj.__stats[idx] += 1
-            if obj.__stats[idx] >= radix.SPLIT:
-                obj.__split(index=idx)
+            if obj.__stats[idx] >= obj.__thold:
+                obj.__node_split(index=idx)
             return True
 
     def get(self, key: str) -> Any:
