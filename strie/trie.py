@@ -198,13 +198,14 @@ class radix:
                 assert modify is True
             else:
                 stack_inc()
+                if idx >= 0:
+                    obj.__stats[idx] += 1
 
             # mark node leaf modify
             if modify is True:
                 obj.__modify = True
 
             obj.__leafs[key] = value
-            obj.__stats[idx] += 1
             if obj.__stats[idx] >= obj.__thold:
                 obj.__node_split(index=idx)
             return True
@@ -243,6 +244,8 @@ class radix:
                 if len(tmp) == 1:
                     # delete empty node
                     obj.__nodes[idx] = None
+                    if idx >= 0:
+                        obj.__stats[idx] -= 1
                     stack_dec()
                     return True
                 obj = tmp
