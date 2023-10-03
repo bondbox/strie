@@ -13,6 +13,41 @@ class radix:
     LEAFS = 8
     NODES = 256
 
+    class leafs:
+
+        def __init__(self):
+            self.__stats: List[int] = [0] * radix.NODES
+            self.__items: Dict[str, Any] = {}
+
+        @property
+        def stats(self) -> List[int]:
+            return self.__stats
+
+        def keys(self) -> List[str]:
+            return list(self.__items.keys())
+
+        def __len__(self) -> int:
+            return len(self.__items)
+
+        def __iter__(self):
+            return iter(self.keys())
+
+        def __contains__(self, key: str) -> bool:
+            return key in self.__items
+
+        def __setitem__(self, key: str, value: Any):
+            if key not in self.__items and key != "":
+                self.__stats[int(key[:2], 16)] += 1
+            self.__items[key] = value
+
+        def __getitem__(self, key: str) -> Any:
+            return self.__items[key]
+
+        def __delitem__(self, key: str):
+            if key in self.__items and key != "":
+                self.__stats[int(key[:2], 16)] -= 1
+            del self.__items[key]
+
     def __init__(self, prefix: str = "", threshold: int = 16):
         assert isinstance(threshold, int) and threshold >= radix.LEAFS
         assert testkey(key=prefix)
@@ -21,8 +56,7 @@ class radix:
         self.__modify: bool = False
         self.__thold: int = threshold
         self.__nodes: List[Optional[radix]] = [None] * radix.NODES
-        self.__stats: List[int] = [0] * radix.NODES
-        self.__leafs: Dict[str, Any] = {}
+        self.__leafs: radix.leafs = radix.leafs()
         self.__count: int = 0
         self.__iter_name: str = ""
         self.__iter_curr: radix = self
@@ -95,7 +129,7 @@ class radix:
             obj.__iter_name = prefix
             obj.__iter_curr = obj
             obj.__iter_prev = tmp
-            obj.__iter_keys = list(obj.__leafs.keys())
+            obj.__iter_keys = obj.__leafs.keys()
             obj.__iter_objs = [i for i in obj.__nodes if isinstance(i, radix)]
 
             if len(obj.__iter_objs) <= 0:
@@ -150,23 +184,19 @@ class radix:
 
             prefix: str = f"{index:02x}"
             newobj: radix = radix(prefix=prefix, threshold=self.__thold)
-            for k, v in obj.__leafs.items():
+            for k in obj.__leafs:
                 if k[:2] == prefix:
-                    newobj.__leafs[k[2:]] = v
+                    newobj.__leafs[k[2:]] = obj.__leafs[k]
                     newobj.__count += 1
-                    newkey = k[2:4]
-                    if newkey != "":
-                        newobj.__stats[int(newkey, 16)] += 1
-            assert obj.__stats[index] == len(newobj)
+            assert obj.__leafs.stats[index] == len(newobj)
             for i in newobj:
                 del obj.__leafs[i]
-                obj.__stats[index] -= 1
-            assert obj.__stats[index] == 0
+            assert obj.__leafs.stats[index] == 0
             obj.__nodes[index] = newobj
             for i in range(radix.NODES + 1):
                 if i >= radix.NODES:
                     return
-                if newobj.__stats[i] >= obj.__thold:
+                if newobj.__leafs.stats[i] >= obj.__thold:
                     obj = newobj
                     index = i
                     break
@@ -198,15 +228,13 @@ class radix:
                 assert modify is True
             else:
                 stack_inc()
-                if idx >= 0:
-                    obj.__stats[idx] += 1
 
             # mark node leaf modify
             if modify is True:
                 obj.__modify = True
 
             obj.__leafs[key] = value
-            if obj.__stats[idx] >= obj.__thold:
+            if obj.__leafs.stats[idx] >= obj.__thold:
                 obj.__node_split(index=idx)
             return True
 
@@ -244,8 +272,6 @@ class radix:
                 if len(tmp) == 1:
                     # delete empty node
                     obj.__nodes[idx] = None
-                    if idx >= 0:
-                        obj.__stats[idx] -= 1
                     stack_dec()
                     return True
                 obj = tmp
