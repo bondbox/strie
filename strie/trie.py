@@ -58,7 +58,6 @@ class radix:
         self.__nodes: List[Optional[radix]] = [None] * radix.NODES
         self.__leafs: radix.leafs = radix.leafs()
         self.__count: int = 0
-        self.__iter_name: str = ""
         self.__iter_curr: radix = self
         self.__iter_prev: radix = self
         self.__iter_keys: List[str] = []
@@ -121,12 +120,9 @@ class radix:
         '''
         DFS(Depth First Search) initialization
         '''
-        prefix: str = prev.__iter_name
         tmp: radix = prev
         obj: radix = self
         while True:
-            prefix += obj.__prefix
-            obj.__iter_name = prefix
             obj.__iter_curr = obj
             obj.__iter_prev = tmp
             obj.__iter_keys = obj.__leafs.keys()
@@ -144,6 +140,15 @@ class radix:
         '''
         DFS(Depth First Search) iteration
         '''
+
+        def fullname(curr: radix, key: str) -> str:
+            keys: List[str] = [key]
+            while curr.__iter_prev is not curr:
+                keys.insert(0, curr.__prefix)
+                curr = curr.__iter_prev
+            keys.insert(0, curr.__prefix)
+            return "".join(keys)
+
         obj: radix = self.__iter_curr
         while True:
             if obj.__iter_curr is obj:
@@ -153,7 +158,7 @@ class radix:
                     if self.__iter_curr is not obj:
                         self.__iter_curr = obj
                     # Return the fullname
-                    return obj.__iter_name + obj.__iter_keys.pop()
+                    return fullname(curr=obj, key=obj.__iter_keys.pop())
 
                 # The root node stops iteration
                 if obj.__iter_prev is obj:
