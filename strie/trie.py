@@ -258,8 +258,17 @@ class radix:
         obj: radix = self
 
         def stack_dec():
+            curr = None
             while len(stk) > 0:
-                stk.pop().__count -= 1
+                prev = curr
+                curr = stk.pop()
+                curr.__count -= 1
+                assert curr.__count >= 0
+                # trim empty child node
+                if prev is not None and prev.__count == 0:
+                    idx = int(prev.__prefix, 16)
+                    assert curr.__nodes[idx] is prev
+                    curr.__nodes[idx] = None
 
         while True:
             stk.append(obj)
@@ -269,11 +278,6 @@ class radix:
 
             # search child node
             if isinstance(tmp, radix):
-                if len(tmp) == 1:
-                    # delete empty node
-                    obj.__nodes[idx] = None
-                    stack_dec()
-                    return True
                 obj = tmp
                 continue
 
@@ -294,8 +298,17 @@ class radix:
 
         def stack_recount(dec: int):
             assert isinstance(dec, int) and dec > 0
+            curr = None
             while len(stk) > 0:
-                stk.pop().__count -= dec
+                prev = curr
+                curr = stk.pop()
+                curr.__count -= dec
+                assert curr.__count >= 0
+                # trim empty child node
+                if prev is not None and prev.__count == 0:
+                    idx = int(prev.__prefix, 16)
+                    assert curr.__nodes[idx] is prev
+                    curr.__nodes[idx] = None
 
         while len(key) > 0:
             assert obj.__check(key)
@@ -305,6 +318,8 @@ class radix:
             tmp = obj.__nodes[idx] if idx >= 0 else None
             # search child node
             if isinstance(tmp, radix):
+                assert len(tmp) > 0
+                assert len(obj) >= len(tmp)
                 # continue if key not empty
                 if len(tmp.__nickname(key)) > 0:
                     obj = tmp
