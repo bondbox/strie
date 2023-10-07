@@ -6,13 +6,41 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
-from .utils import testkey
-
 
 class radix:
 
     LEAFS = 128
     NODES = 256
+
+    @classmethod
+    def testkey(cls, key: str) -> bool:
+        '''
+        allowed characters: 0-9, A-Z, a-z
+        '''
+        """
+        for i in range(ord('0'), ord('9') + 1):
+            print(f"'{chr(i)}',")
+
+        for i in range(ord('A'), ord('Z') + 1):
+            print(f"'{chr(i)}',")
+
+        for i in range(ord('a'), ord('z') + 1):
+            print(f"'{chr(i)}',")
+        """
+        allowed_char = {
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
+            'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+            'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c',
+            'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+            'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+        }
+
+        if not isinstance(key, str):
+            return False
+        for i in key:
+            if i not in allowed_char:
+                return False
+        return True
 
     class store:
 
@@ -55,18 +83,20 @@ class radix:
 
         def __delitem__(self, key: str):
             if key in self.__items and key != "":
-                self.__stats[int(key[:2], 16)] -= 1
+                self.__stats[ord(key[0])] -= 1
             del self.__items[key]
 
         def put(self, key: str, value: Any) -> bool:
-            index = int(key[:2], 16)
+            split = False
             if key not in self.__items and key != "":
+                index = ord(key[0])
                 self.__stats[index] += 1
+                split = self.__stats[index] >= self.__upper
             self.__items[key] = value
-            return self.__stats[index] >= self.__upper
+            return split
 
     def __init__(self, prefix: str = "", root: Optional["radix"] = None):
-        assert testkey(key=prefix)
+        assert self.testkey(key=prefix)
         assert (isinstance(root, radix) and len(prefix) > 0) or root is None
         threshold = root.__leafs.upper * 2 if isinstance(root, radix) else 1
         self.__root: Optional[radix] = root
@@ -193,7 +223,7 @@ class radix:
         '''
         split new node
         '''
-        prefix = key[:2]
+        prefix = key[0]
         obj: radix = self
 
         def recheck(curr: radix):
@@ -224,8 +254,8 @@ class radix:
                     recheck(curr=newobj)
                     return
                 if newobj.__leafs.stats[i] >= newobj.__leafs.upper:
+                    prefix = chr(i)
                     obj = newobj
-                    prefix = f"{i:02x}"
                     break
 
     def __set_node(self, value: "radix", modify: bool) -> bool:
@@ -275,7 +305,7 @@ class radix:
         return True
 
     def put(self, key: str, value: Any, modify: bool = True) -> bool:
-        assert testkey(key=key) and self.__check(key)
+        assert self.testkey(key=key) and self.__check(key)
         assert isinstance(modify, bool)
 
         obj: radix = self

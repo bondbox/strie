@@ -3,13 +3,17 @@
 from typing import List
 from typing import Sequence
 
-allowed_char = [
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e',
-    'f'
-]
 
+def testvkey(key: str) -> bool:
+    '''
+    allowed characters: 0-9, a-f
+    '''
 
-def testkey(key: str) -> bool:
+    allowed_char = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd',
+        'e', 'f'
+    }
+
     if not isinstance(key, str):
         return False
     if len(key) % 2 != 0:
@@ -31,9 +35,5 @@ def seqtokey(datas: Sequence[int], reverse: bool = False):
     if reverse:
         res.reverse()
     key = "".join(res).lower()
-    assert testkey(key=key)
+    assert testvkey(key=key)
     return key
-
-
-def strtokey(s: str):
-    return seqtokey(datas=s.encode(encoding="utf-8"))

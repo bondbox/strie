@@ -4,4 +4,4 @@ from .utils import __version__
 
 from .trie import radix
 
-from .utils import strtokey
+from .utils import seqtokey
