@@ -4,6 +4,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 from .utils import testkey
 
@@ -75,10 +76,8 @@ class radix:
         self.__leafs: radix.store = radix.store(threshold)
         self.__nodes: Dict[str, radix] = {}
         self.__count: int = 0
-        self.__iter_curr: radix = self
-        self.__iter_prev: radix = self
         self.__iter_keys: List[str] = []
-        self.__iter_objs: List[radix] = []
+        self.__iter_objs: List[Tuple[str, radix]] = []
 
     @property
     def prefix(self) -> str:
@@ -117,7 +116,7 @@ class radix:
         return self.__count
 
     def __iter__(self):
-        return self.__iter_init(prev=self)
+        return self.__iter_init()
 
     def __next__(self) -> str:
         return self.__iter_walk()
@@ -126,8 +125,7 @@ class radix:
         assert isinstance(key, str)
         obj: radix = self
         while True:
-            if not obj.__check(key):
-                return False
+            assert obj.__check(key)
             key = obj.__nickname(key)
             tmp = obj.__get_node(key)
             if isinstance(tmp, radix):
@@ -144,67 +142,52 @@ class radix:
     def __delitem__(self, key: str):
         self.pop(key=key)
 
-    def __iter_init(self, prev: "radix"):
+    def __iter_init(self):
         '''
         DFS(Depth First Search) initialization
         '''
-        tmp: radix = prev
-        obj: radix = self
-        while True:
-            obj.__iter_curr = obj
-            obj.__iter_prev = tmp
-            obj.__iter_keys = obj.leafs
-            obj.__iter_objs = obj.child
+        assert isinstance(self.__iter_keys, List)
+        assert isinstance(self.__iter_objs, List)
 
-            if len(obj.__iter_objs) <= 0:
-                self.__iter_curr = obj
-                return self
+        def fullname(curr: Optional[radix]) -> str:
+            assert isinstance(curr, radix)
+            keys: List[str] = []
+            while curr is not None:
+                keys.insert(0, curr.prefix)
+                if curr is self:
+                    break
+                curr = curr.__root
+            return "".join(keys)
 
-            obj.__iter_curr = obj.__iter_objs.pop()
-            tmp = obj
-            obj = obj.__iter_curr
+        prev = [self]
+        self.__iter_keys.clear()
+        self.__iter_objs.clear()
+
+        while len(prev) > 0:
+            curr = []
+            for node in prev:
+                name = fullname(curr=node)
+                self.__iter_objs.append((name, node))
+                curr.extend(node.child)
+            prev = curr
+
+        return self
 
     def __iter_walk(self) -> str:
         '''
         DFS(Depth First Search) iteration
         '''
 
-        def fullname(curr: radix, key: str) -> str:
-            keys: List[str] = [key]
-            while curr.__iter_prev is not curr:
-                keys.insert(0, curr.prefix)
-                curr = curr.__iter_prev
-            keys.insert(0, curr.prefix)
-            return "".join(keys)
-
-        obj: radix = self.__iter_curr
         while True:
-            if obj.__iter_curr is obj:
-                # Return this node after all child nodes
-                if len(obj.__iter_keys) > 0:
-                    # For quick next time
-                    if self.__iter_curr is not obj:
-                        self.__iter_curr = obj
-                    # Return the fullname
-                    return fullname(curr=obj, key=obj.__iter_keys.pop())
+            if len(self.__iter_keys) > 0:
+                return self.__iter_keys.pop()
 
-                # The root node stops iteration
-                if obj.__iter_prev is obj:
-                    raise StopIteration
-
-                # Back to previous node
-                obj = obj.__iter_prev
+            if len(self.__iter_objs) > 0:
+                name, node = self.__iter_objs.pop()
+                self.__iter_keys.extend([name + k for k in node.leafs])
                 continue
 
-            # No child nodes, next itself
-            if len(obj.__iter_objs) <= 0:
-                obj.__iter_curr = obj
-                continue
-
-            # Next child node
-            tmp = obj.__iter_objs.pop()
-            tmp.__iter_init(prev=obj)
-            obj = tmp.__iter_curr
+            raise StopIteration
 
     def __split_node(self, key: str, modify: bool):
         '''
@@ -330,8 +313,7 @@ class radix:
         assert isinstance(key, str)
         obj: radix = self
         while True:
-            if not obj.__check(key):
-                return None
+            assert obj.__check(key)
             key = obj.__nickname(key)
             tmp = obj.__get_node(key)
             if isinstance(tmp, radix):
