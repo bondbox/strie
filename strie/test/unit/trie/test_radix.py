@@ -3,16 +3,25 @@
 import hashlib
 from random import randint
 from typing import List
+from typing import Set
 import unittest
 
 from strie import radix
+from strie import testskey
 
 
 class test_radix(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.keys = {
+        cls.loop: int = 10000
+        cls.hash = hashlib.md5()
+        cls.vals: Set[str] = set()
+        for i in range(cls.loop):
+            cls.hash.update(str(i).encode())
+            code = cls.hash.hexdigest()
+            cls.vals.add(code)
+        cls.keys: Set[str] = {
             "str",
             "strie",
             "strip",
@@ -35,51 +44,50 @@ class test_radix(unittest.TestCase):
 
     def setUp(self):
         self.root = radix()
-        self.loop = 10000
 
     def tearDown(self):
         pass
 
-    def test_key(self):
-        self.assertTrue(self.root.testkey(""))
+    def test_testskey(self):
+        self.assertTrue(testskey(""))
         for i in range(ord("0"), ord("9") + 1):
-            self.assertTrue(self.root.testkey(chr(i)))
+            self.assertTrue(testskey(chr(i)))
         for i in range(ord("A"), ord("Z") + 1):
-            self.assertTrue(self.root.testkey(chr(i)))
+            self.assertTrue(testskey(chr(i)))
         for i in range(ord("a"), ord("z") + 1):
-            self.assertTrue(self.root.testkey(chr(i)))
-        self.assertTrue(self.root.testkey("0bC3eF6hI"))
-        self.assertTrue(self.root.testkey("A1cD4fG7i"))
-        self.assertTrue(self.root.testkey("0123456789"))
-        self.assertTrue(self.root.testkey("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        self.assertTrue(self.root.testkey("abcdefghijklmnopqrstuvwxyz"))
-        self.assertTrue(self.root.testkey("testkey"))
-        self.assertFalse(self.root.testkey("test_key"))
-        self.assertFalse(self.root.testkey(1))
+            self.assertTrue(testskey(chr(i)))
+        self.assertTrue(testskey("0bC3eF6hI"))
+        self.assertTrue(testskey("A1cD4fG7i"))
+        self.assertTrue(testskey("0123456789"))
+        self.assertTrue(testskey("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+        self.assertTrue(testskey("abcdefghijklmnopqrstuvwxyz"))
+        self.assertTrue(testskey("testskey"))
+        self.assertFalse(testskey("test_key"))
+        self.assertFalse(testskey(1))
 
-    def hash_sequence(self, hash):
+    def test_hash_sequence(self):
         keys: List[str] = []
+        index: int = 0
 
-        for i in range(1, self.loop + 1):
-            hash.update(str(i).encode())
-            code = hash.hexdigest()
+        for code in self.vals:
+            index += 1
             keys.append(code)
 
-            self.root[code] = i
+            self.root[code] = index
             self.assertTrue(code in self.root)
-            self.assertEqual(len(self.root), i)
-            self.assertEqual(self.root[code], i)
+            self.assertEqual(len(self.root), index)
+            self.assertEqual(self.root[code], index)
 
             self.root[code] = code
             self.assertTrue(code in self.root)
-            self.assertEqual(len(self.root), i)
+            self.assertEqual(len(self.root), index)
             self.assertEqual(self.root[code], code)
 
         self.assertEqual(len(self.root), len(keys))
         self.assertTrue(self.root.modify)
-        for i in self.root.child:
-            self.assertGreater(len(i), 0)
-            self.assertTrue(i.modify)
+        for node in self.root.child:
+            self.assertGreater(len(node), 0)
+            self.assertTrue(node.modify)
 
         for key in self.root:
             self.assertTrue(key in keys)
@@ -110,12 +118,12 @@ class test_radix(unittest.TestCase):
         self.assertEqual(len(self.root.child), 0)
         self.assertFalse(self.root.pop(keys[-1]))
 
-    def hash_random(self, hash):
+    def test_hash_random(self):
         keys: List[str] = []
 
         for i in range(1, self.loop + 1):
-            hash.update(str(randint(i, i * 2) + i).encode())
-            code = hash.hexdigest()
+            self.hash.update(str(randint(i, i * 2) + i).encode())
+            code = self.hash.hexdigest()
             keys.append(code)
 
             self.root[code] = i
@@ -130,9 +138,9 @@ class test_radix(unittest.TestCase):
 
         self.assertEqual(len(self.root), len(keys))
         self.assertTrue(self.root.modify)
-        for i in self.root.child:
-            self.assertGreater(len(i), 0)
-            self.assertTrue(i.modify)
+        for node in self.root.child:
+            self.assertGreater(len(node), 0)
+            self.assertTrue(node.modify)
 
         for key in self.root:
             self.assertTrue(key in keys)
@@ -162,12 +170,6 @@ class test_radix(unittest.TestCase):
         self.assertEqual(len(self.root), 0)
         self.assertEqual(len(self.root.child), 0)
         self.assertFalse(self.root.pop(keys[-1]))
-
-    def test_md5_sequence(self):
-        self.hash_sequence(hashlib.md5())
-
-    def test_md5_random(self):
-        self.hash_random(hashlib.md5())
 
     def test_split(self):
         keys = {"230922", "230922110351"}
@@ -246,3 +248,16 @@ class test_radix(unittest.TestCase):
                          self.loop * 2 + len(self.keys) + 1)
         self.assertEqual(len(self.root.child), 0)
         self.assertEqual(len(self.root), 0)
+
+    def test_pin_node(self):
+        self.assertTrue(self.root.pin("str"))
+        obj, = self.root.child
+        self.assertEqual(obj.prefix, "str")
+        self.assertTrue(obj.pin("ing"))
+        obj, = obj.child
+        self.assertEqual(obj.prefix, "ing")
+
+    def test_prefix(self):
+        for i in range(256):
+            self.assertIsInstance(radix(prefix=f"{i:02x}", test=testskey),
+                                  radix)

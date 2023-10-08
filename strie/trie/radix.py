@@ -1,46 +1,50 @@
 # coding:utf-8
 
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
 
 
+def testskey(key: str) -> bool:
+    '''
+    allowed characters: 0-9, A-Z, a-z
+    '''
+    """
+    for i in range(ord('0'), ord('9') + 1):
+        print(f"'{chr(i)}',")
+
+    for i in range(ord('A'), ord('Z') + 1):
+        print(f"'{chr(i)}',")
+
+    for i in range(ord('a'), ord('z') + 1):
+        print(f"'{chr(i)}',")
+    """
+    allowed_char = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
+        'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z'
+    }
+
+    if not isinstance(key, str):
+        return False
+    for i in key:
+        if i not in allowed_char:
+            return False
+    return True
+
+
 class radix:
+    """
+    Radix tree
+    """
 
     LEAFS = 128
     NODES = 256
-
-    @classmethod
-    def testkey(cls, key: str) -> bool:
-        '''
-        allowed characters: 0-9, A-Z, a-z
-        '''
-        """
-        for i in range(ord('0'), ord('9') + 1):
-            print(f"'{chr(i)}',")
-
-        for i in range(ord('A'), ord('Z') + 1):
-            print(f"'{chr(i)}',")
-
-        for i in range(ord('a'), ord('z') + 1):
-            print(f"'{chr(i)}',")
-        """
-        allowed_char = {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
-            'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-            'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c',
-            'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
-            'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-        }
-
-        if not isinstance(key, str):
-            return False
-        for i in key:
-            if i not in allowed_char:
-                return False
-        return True
 
     class store:
 
@@ -95,19 +99,27 @@ class radix:
             self.__items[key] = value
             return split
 
-    def __init__(self, prefix: str = "", root: Optional["radix"] = None):
-        assert self.testkey(key=prefix)
-        assert (isinstance(root, radix) and len(prefix) > 0) or root is None
-        threshold = root.__leafs.upper * 2 if isinstance(root, radix) else 1
-        self.__root: Optional[radix] = root
+    def __init__(self,
+                 prefix: str = "",
+                 root: Optional["radix"] = None,
+                 test: Callable[[str], bool] = testskey):
+        assert isinstance(test, Callable) and test(prefix)
+        length: int = len(prefix)
+
+        assert (isinstance(root, radix) and length > 0) or root is None
+        maximum: int = 1 if root is None else root.__leafs.upper * 2**length
+
         self.__prefix: str = prefix
-        self.__length: int = len(prefix)
+        self.__length: int = length
         self.__modify: bool = False
-        self.__leafs: radix.store = radix.store(threshold)
+        self.__root: Optional[radix] = root
+        self.__test: Callable[[str], bool] = test
+        self.__tack: bool = True if root is None else False
+        self.__leafs: radix.store = radix.store(threshold=maximum)
         self.__nodes: Dict[str, radix] = {}
         self.__count: int = 0
-        self.__iter_keys: List[str] = []
         self.__iter_objs: List[Tuple[str, radix]] = []
+        self.__iter_keys: List[str] = []
 
     @property
     def prefix(self) -> str:
@@ -172,6 +184,37 @@ class radix:
     def __delitem__(self, key: str):
         self.pop(key=key)
 
+    def __inc(self, v: int = 1) -> int:
+        assert isinstance(v, int) and v > 0
+        curr: Optional[radix] = self
+        while curr is not None:
+            curr.__count += v
+            curr = curr.__root
+        return v
+
+    def __dec(self, v: int = 1) -> int:
+        assert isinstance(v, int) and v > 0
+        curr: Optional[radix] = self
+        prev = None
+        while curr is not None:
+            curr.__count -= v
+            assert curr.__count >= 0
+            if prev is not None:
+                if prev.__tack is False:
+                    # recycle child node with fewer leaves
+                    if prev.__count <= curr.__leafs.lower:
+                        for key in prev:
+                            assert key not in curr.__leafs
+                            curr.__leafs[key] = prev[key]
+                        prev.__count = 0
+                    # trim empty child node
+                    if prev.__count == 0:
+                        assert curr.__get_node(prev.prefix) is prev
+                        assert curr.__del_node(prev.prefix)
+            prev = curr
+            curr = curr.__root
+        return v
+
     def __iter_init(self):
         '''
         DFS(Depth First Search) initialization
@@ -219,7 +262,7 @@ class radix:
 
             raise StopIteration
 
-    def __split_node(self, key: str, modify: bool):
+    def __split_node(self, key: str, modify: bool = True):
         '''
         split new node
         '''
@@ -227,7 +270,7 @@ class radix:
         obj: radix = self
 
         def recheck(curr: radix):
-            while curr.__root is not None:
+            while curr.__root is not None and not curr.__root.__tack:
                 prev = curr
                 curr = curr.__root
                 assert curr.__get_node(prev.prefix) is prev
@@ -258,11 +301,14 @@ class radix:
                     obj = newobj
                     break
 
-    def __set_node(self, value: "radix", modify: bool) -> bool:
+    def __set_node(self, value: "radix", modify: bool = True) -> bool:
         assert isinstance(value, radix) and len(value.prefix) > 0
         assert value.prefix not in self.__nodes
         assert isinstance(modify, bool)
-        value.__root = self
+        # check root node
+        if value.__root is not self:
+            value.__root = self
+        # add child leafs
         for key in self.__leafs:
             if key[:value.__length] == value.prefix:
                 newkey = key[value.__length:]
@@ -300,21 +346,25 @@ class radix:
 
     def __del_node(self, prefix: str) -> bool:
         assert isinstance(prefix, str) and len(prefix) > 0
-        assert prefix in self.__nodes
+        assert prefix in self.__nodes and self.__nodes[prefix].__tack is False
         del self.__nodes[prefix]
         return True
 
+    def pin(self, prefix: str) -> bool:
+        assert isinstance(prefix, str) and len(prefix) > 0
+        obj = radix(prefix=prefix, root=self)
+        obj.__tack = True
+        tmp = self
+        while tmp is not None:
+            assert tmp.__tack is True
+            tmp = tmp.__root
+        return self.__set_node(obj)
+
     def put(self, key: str, value: Any, modify: bool = True) -> bool:
-        assert self.testkey(key=key) and self.__check(key)
+        assert self.__test(key) and self.__check(key)
         assert isinstance(modify, bool)
 
         obj: radix = self
-
-        def inc(curr: Optional[radix]):
-            assert isinstance(curr, radix)
-            while curr is not None:
-                curr.__count += 1
-                curr = curr.__root
 
         while True:
             key = obj.__nickname(key)
@@ -329,7 +379,7 @@ class radix:
             if key in obj.__leafs:
                 assert modify is True
             else:
-                inc(curr=obj)
+                assert obj.__inc() == 1
 
             # mark node leaf modify
             if modify is True:
@@ -355,26 +405,6 @@ class radix:
         assert isinstance(key, str) and self.__check(key)
         obj: radix = self
 
-        def dec(curr: Optional[radix]):
-            assert isinstance(curr, radix)
-            prev = None
-            while curr is not None:
-                curr.__count -= 1
-                assert curr.__count >= 0
-                if prev is not None:
-                    # recycle child node with fewer leaves
-                    if prev.__count <= curr.__leafs.lower:
-                        for key in prev:
-                            assert key not in curr.__leafs
-                            curr.__leafs[key] = prev[key]
-                        prev.__count = 0
-                    # trim empty child node
-                    if prev.__count == 0:
-                        assert curr.__get_node(prev.prefix) is prev
-                        assert curr.__del_node(prev.prefix)
-                prev = curr
-                curr = curr.__root
-
         while True:
             key = obj.__nickname(key)
             tmp = obj.__get_node(key)
@@ -391,35 +421,13 @@ class radix:
             # delete leaf and mark node leaf modify
             obj.__modify = True
             del obj.__leafs[key]
-            dec(curr=obj)
+            assert obj.__dec() == 1
             return True
 
     def trim(self, key: str) -> int:
         assert isinstance(key, str)
         obj: radix = self
         sum: int = 0
-
-        def recount(curr: Optional[radix], dec: int) -> int:
-            assert isinstance(curr, radix)
-            assert isinstance(dec, int) and dec > 0
-            prev = None
-            while curr is not None:
-                curr.__count -= dec
-                assert curr.__count >= 0
-                if prev is not None:
-                    # recycle child node with fewer leaves
-                    if prev.__count <= curr.__leafs.lower:
-                        for key in prev:
-                            assert key not in curr.__leafs
-                            curr.__leafs[key] = prev[key]
-                        prev.__count = 0
-                    # trim empty child node
-                    if prev.__count == 0:
-                        assert curr.__get_node(prev.prefix) is prev
-                        assert curr.__del_node(prev.prefix)
-                prev = curr
-                curr = curr.__root
-            return dec
 
         while len(key) >= 0:
             assert obj.__check(key)
@@ -435,7 +443,7 @@ class radix:
                     continue
                 # delete endpoint and recount
                 assert obj.__del_node(tmp.prefix)
-                return recount(curr=obj, dec=len(tmp))
+                return obj.__dec(len(tmp))
             sumdec: int = 0
             length: int = len(key)
             delete: List[str] = []
@@ -446,7 +454,7 @@ class radix:
                 sumdec += len(obj.__nodes[k])
                 assert obj.__del_node(k)
             if sumdec > 0:
-                sum += recount(curr=obj, dec=sumdec)
+                sum += obj.__dec(sumdec)
             break
 
         sumdec: int = 0
@@ -462,5 +470,5 @@ class radix:
             sumdec += 1
 
         if sumdec > 0:
-            sum += recount(curr=obj, dec=sumdec)
+            sum += obj.__dec(sumdec)
         return sum
