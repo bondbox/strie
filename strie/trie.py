@@ -409,7 +409,7 @@ class radix:
                 curr = curr.__root
             return dec
 
-        while len(key) > 0:
+        while len(key) >= 0:
             assert obj.__check(key)
             key = obj.__nickname(key)
             tmp = obj.__get_node(key)
