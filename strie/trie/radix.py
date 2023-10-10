@@ -184,6 +184,15 @@ class radix:
     def __delitem__(self, key: str):
         self.pop(key=key)
 
+    def __chg(self) -> bool:
+        curr: Optional[radix] = self
+        while curr is not None:
+            if curr.__modify is True:
+                break
+            curr.__modify = True
+            curr = curr.__root
+        return True
+
     def __inc(self, v: int = 1) -> int:
         assert isinstance(v, int) and v > 0
         curr: Optional[radix] = self
@@ -317,8 +326,7 @@ class radix:
                 value.__count += 1
                 del self.__leafs[key]
                 if modify is True:
-                    self.__modify = True
-                    value.__modify = True
+                    assert value.__chg() is True
         # add child nodes
         for key in list(self.__nodes.keys()):
             if key[:value.__length] == value.prefix:
@@ -383,7 +391,7 @@ class radix:
 
             # mark node leaf modify
             if modify is True:
-                obj.__modify = True
+                assert obj.__chg() is True
 
             if obj.__leafs.put(key=key, value=value):
                 obj.__split_node(key=key, modify=modify)
@@ -419,7 +427,7 @@ class radix:
                 return False
 
             # delete leaf and mark node leaf modify
-            obj.__modify = True
+            assert obj.__chg() is True
             del obj.__leafs[key]
             assert obj.__dec() == 1
             return True
