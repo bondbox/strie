@@ -252,9 +252,11 @@ class test_radix(unittest.TestCase):
     def test_pin_node(self):
         self.assertTrue(self.root.pin("str"))
         obj, = self.root.child
+        self.assertEqual(obj.name, "str")
         self.assertEqual(obj.prefix, "str")
         self.assertTrue(obj.pin("ing"))
         obj, = obj.child
+        self.assertEqual(obj.name, "string")
         self.assertEqual(obj.prefix, "ing")
 
     def test_prefix(self):

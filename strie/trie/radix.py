@@ -122,6 +122,10 @@ class radix:
         self.__iter_keys: List[str] = []
 
     @property
+    def name(self) -> str:
+        return self.__fullname()
+
+    @property
     def prefix(self) -> str:
         return self.__prefix
 
@@ -144,6 +148,16 @@ class radix:
     @property
     def modify(self) -> bool:
         return self.__modify
+
+    def __fullname(self, end: Optional["radix"] = None) -> str:
+        keys: List[str] = []
+        curr: Optional[radix] = self
+        while curr is not None:
+            keys.insert(0, curr.prefix)
+            if curr is end:
+                break
+            curr = curr.__root
+        return "".join(keys)
 
     def __nickname(self, key: str) -> str:
         assert isinstance(key, str)
@@ -231,16 +245,6 @@ class radix:
         assert isinstance(self.__iter_keys, List)
         assert isinstance(self.__iter_objs, List)
 
-        def fullname(curr: Optional[radix]) -> str:
-            assert isinstance(curr, radix)
-            keys: List[str] = []
-            while curr is not None:
-                keys.insert(0, curr.prefix)
-                if curr is self:
-                    break
-                curr = curr.__root
-            return "".join(keys)
-
         prev = [self]
         self.__iter_keys.clear()
         self.__iter_objs.clear()
@@ -248,7 +252,7 @@ class radix:
         while len(prev) > 0:
             curr = []
             for node in prev:
-                name = fullname(curr=node)
+                name = node.__fullname(end=self)
                 self.__iter_objs.append((name, node))
                 curr.extend(node.child)
             prev = curr
