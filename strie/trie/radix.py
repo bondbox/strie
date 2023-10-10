@@ -100,6 +100,9 @@ class radix:
     def name(self) -> str:
         return self.__fullname()
 
+    def nick(self, key: str) -> str:
+        return self.__nickname(key)
+
     @property
     def prefix(self) -> str:
         return self.__prefix
@@ -165,13 +168,13 @@ class radix:
             return key in obj.__leafs
 
     def __setitem__(self, key: str, value: Any):
-        self.put(key=key, value=value, modify=True)
+        assert self.put(key=key, value=value, modify=True)
 
     def __getitem__(self, key: str) -> Any:
         return self.get(key=key)
 
     def __delitem__(self, key: str):
-        self.pop(key=key)
+        assert self.pop(key=key)
 
     def __chg(self) -> bool:
         curr: Optional[radix] = self

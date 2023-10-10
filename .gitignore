@@ -161,4 +161,5 @@ cython_debug/
 #.idea/
 
 # self test
+test/data
 test/hash
