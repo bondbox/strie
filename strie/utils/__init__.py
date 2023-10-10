@@ -1,6 +1,6 @@
 # coding:utf-8
 
-__version__ = "0.1.alpha.2"
+__version__ = "0.1.alpha.3"
 __prog__ = "strie"
 __base__ = f".{__prog__}"
 
