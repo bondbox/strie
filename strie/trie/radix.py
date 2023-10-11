@@ -1,41 +1,14 @@
 # coding:utf-8
 
 from typing import Any
-from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
 
+from ..utils import testckey
 
-def testskey(key: str) -> bool:
-    '''
-    allowed characters: 0-9, A-Z, a-z
-    '''
-    """
-    for i in range(ord('0'), ord('9') + 1):
-        print(f"'{chr(i)}',")
-
-    for i in range(ord('A'), ord('Z') + 1):
-        print(f"'{chr(i)}',")
-
-    for i in range(ord('a'), ord('z') + 1):
-        print(f"'{chr(i)}',")
-    """
-    allowed_char = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
-        'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-        'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
-        'u', 'v', 'w', 'x', 'y', 'z'
-    }
-
-    if not isinstance(key, str):
-        return False
-    for i in key:
-        if i not in allowed_char:
-            return False
-    return True
+testskey = testckey(allowed_char=testckey.skey)
 
 
 class radix:
@@ -101,9 +74,11 @@ class radix:
 
     def __init__(self,
                  prefix: str = "",
-                 root: Optional["radix"] = None,
-                 test: Callable[[str], bool] = testskey):
-        assert isinstance(test, Callable) and test(prefix)
+                 test: testckey = testskey,
+                 root: Optional["radix"] = None):
+        assert isinstance(test, testckey)
+        if prefix != "":
+            assert isinstance(test, testckey) and test.check(prefix)
         length: int = len(prefix)
 
         assert (isinstance(root, radix) and length > 0) or root is None
@@ -112,8 +87,8 @@ class radix:
         self.__prefix: str = prefix
         self.__length: int = length
         self.__modify: bool = False
+        self.__test: testckey = test
         self.__root: Optional[radix] = root
-        self.__test: Callable[[str], bool] = test
         self.__tack: bool = True if root is None else False
         self.__leafs: radix.store = radix.store(threshold=maximum)
         self.__nodes: Dict[str, radix] = {}
@@ -373,7 +348,7 @@ class radix:
         return self.__set_node(obj)
 
     def put(self, key: str, value: Any, modify: bool = True) -> bool:
-        assert self.__test(key) and self.__check(key)
+        assert self.__test.check(key) and self.__check(key)
         assert isinstance(modify, bool)
 
         obj: radix = self

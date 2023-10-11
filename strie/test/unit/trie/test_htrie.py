@@ -34,21 +34,35 @@ class test_htrie(unittest.TestCase):
         pass
 
     def test_testhkey(self):
-        self.assertTrue(testhkey(""))
+        self.assertTrue(testhkey.check(""))
         for i in range(ord("0"), ord("9") + 1):
-            self.assertFalse(testhkey(chr(i)))
+            self.assertFalse(testhkey.check(chr(i)))
         for i in range(ord("a"), ord("f") + 1):
-            self.assertFalse(testhkey(chr(i)))
+            self.assertFalse(testhkey.check(chr(i)))
         for i in range(ord("A"), ord("F") + 1):
-            self.assertFalse(testhkey(chr(i)))
-        self.assertTrue(testhkey("0b2d4f"))
-        self.assertTrue(testhkey("a1c3e5"))
-        self.assertTrue(testhkey("0123456789abcdef"))
-        self.assertFalse(testhkey("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        self.assertFalse(testhkey("abcdefghijklmnopqrstuvwxyz"))
-        self.assertFalse(testhkey("testhkey"))
-        self.assertFalse(testhkey("test_key"))
-        self.assertFalse(testhkey(1))
+            self.assertFalse(testhkey.check(chr(i)))
+        self.assertTrue(testhkey.check("0b2d4f"))
+        self.assertTrue(testhkey.check("a1c3e5"))
+        self.assertTrue(testhkey.check("0123456789abcdef"))
+        self.assertFalse(testhkey.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+        self.assertFalse(testhkey.check("abcdefghijklmnopqrstuvwxyz"))
+        self.assertFalse(testhkey.check("testhkey"))
+        self.assertFalse(testhkey.check("test_key"))
+        self.assertFalse(testhkey.check(1))
+        self.assertFalse(testhkey.check(""))
+        for i in range(ord("0"), ord("9") + 1):
+            self.assertFalse(testhkey.check(chr(i)))
+        for i in range(ord("a"), ord("f") + 1):
+            self.assertFalse(testhkey.check(chr(i)))
+        for i in range(ord("A"), ord("F") + 1):
+            self.assertFalse(testhkey.check(chr(i)))
+        self.assertTrue(testhkey.check("0b2d4f"))
+        self.assertTrue(testhkey.check("a1c3e5"))
+        self.assertTrue(testhkey.check("0123456789abcdef"))
+        self.assertFalse(testhkey.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+        self.assertFalse(testhkey.check("abcdefghijklmnopqrstuvwxyz"))
+        self.assertFalse(testhkey.check("testhkey"))
+        self.assertFalse(testhkey.check("test_key"))
 
     def test_root(self):
         self.assertEqual(len(self.root.leafs), 0)

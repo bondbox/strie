@@ -2,8 +2,8 @@
 
 import unittest
 
-from strie.utils.vkey import seqtokey
-from strie.utils.vkey import testvkey
+from strie.utils import seqtokey
+from strie.utils import testvkey
 
 
 class test_vkey(unittest.TestCase):
@@ -22,12 +22,12 @@ class test_vkey(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_key(self):
-        self.assertTrue(testvkey(""))
-        self.assertTrue(testvkey("0123456789abcdef"))
-        self.assertFalse(testvkey("test_key"))
-        self.assertFalse(testvkey("0"))
-        self.assertFalse(testvkey(1))
+    def test_vkey(self):
+        self.assertTrue(testvkey.check("0123456789abcdef"))
+        self.assertFalse(testvkey.check("test_key"))
+        self.assertFalse(testvkey.check("0"))
+        self.assertFalse(testvkey.check(""))
+        self.assertFalse(testvkey.check(1))
 
     def test_seqtokey(self):
         self.assertEqual(seqtokey([0]), "00")

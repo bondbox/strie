@@ -49,21 +49,20 @@ class test_radix(unittest.TestCase):
         pass
 
     def test_testskey(self):
-        self.assertTrue(testskey(""))
+        self.assertFalse(testskey.check(""))
         for i in range(ord("0"), ord("9") + 1):
-            self.assertTrue(testskey(chr(i)))
+            self.assertTrue(testskey.check(chr(i)))
         for i in range(ord("A"), ord("Z") + 1):
-            self.assertTrue(testskey(chr(i)))
+            self.assertTrue(testskey.check(chr(i)))
         for i in range(ord("a"), ord("z") + 1):
-            self.assertTrue(testskey(chr(i)))
-        self.assertTrue(testskey("0bC3eF6hI"))
-        self.assertTrue(testskey("A1cD4fG7i"))
-        self.assertTrue(testskey("0123456789"))
-        self.assertTrue(testskey("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        self.assertTrue(testskey("abcdefghijklmnopqrstuvwxyz"))
-        self.assertTrue(testskey("testskey"))
-        self.assertFalse(testskey("test_key"))
-        self.assertFalse(testskey(1))
+            self.assertTrue(testskey.check(chr(i)))
+        self.assertTrue(testskey.check("0bC3eF6hI"))
+        self.assertTrue(testskey.check("A1cD4fG7i"))
+        self.assertTrue(testskey.check("0123456789"))
+        self.assertTrue(testskey.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+        self.assertTrue(testskey.check("abcdefghijklmnopqrstuvwxyz"))
+        self.assertTrue(testskey.check("testskey"))
+        self.assertFalse(testskey.check("test_key"))
 
     def test_hash_sequence(self):
         keys: List[str] = []
