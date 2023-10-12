@@ -13,6 +13,7 @@ from .radix import testskey
 from .store import dfile
 from .store import ifile
 from .store import index
+from .store import nfile
 
 
 class store:
@@ -155,7 +156,6 @@ class ctrie:
     Caching and persisting radix trees
     """
 
-    MAX_FILES = 10**6
     MAX_NODES = 10**3  # TODO: OSError: [Errno 24] Too many open files
     MIN_NODES = 10**1
     MIN_CACHE = 10**2
@@ -167,22 +167,17 @@ class ctrie:
                  cachemax: int = 10**6,
                  readonly: bool = True):
         assert isinstance(path, str)
-        assert isinstance(word, Sequence)
-        assert isinstance(test, testckey)
         assert isinstance(cachemax, int)
         assert isinstance(readonly, bool)
         if not os.path.exists(path):
             os.makedirs(path)
         assert os.path.isdir(path)
         self.__path: str = path
-        self.__test: testckey = test
-        self.__word: Sequence[int] = tuple(int(i) for i in word)
-        for i in self.__word:
-            assert i > 0
-        self.__length: int = sum(self.__word)
-        nodes = len(self.__test.characters)**self.__length
-        assert nodes <= self.MAX_FILES
-        cacheobj: int = min(int(nodes / 2), self.MAX_NODES)
+        self.__names: nfile = nfile(path=self.__path,
+                                    word=word,
+                                    test=test,
+                                    readonly=readonly)
+        cacheobj: int = min(int(self.__names.nodes / 2), self.MAX_NODES)
         cachekey: int = max(int(cachemax / cacheobj / 5), self.MIN_CACHE)
         self.__clru: LRUCache[str, store] = LRUCache(
             maxsize=cacheobj if cacheobj > self.MIN_NODES else self.MIN_NODES)
@@ -192,42 +187,32 @@ class ctrie:
         self.__cachelru: int = cachekey
         self.__readonly: bool = readonly
 
-    def __check(self, key: str) -> bool:
-        if not isinstance(key, str):
-            return False
-        if len(key) < self.__length:
-            return False
-        return self.__test.check(key)
+    def __contains__(self, key: str) -> bool:
+        return key in self.__route(key)
 
-    def __get_name(self, key: str) -> str:
-        assert self.__check(key)
-        return key[:self.__length]
+    def __setitem__(self, key: str, value: bytes):
+        assert self.__route(key).put(key=key, value=value)
 
-    def __get_path(self, name: str) -> str:
-        assert isinstance(name, str) and len(name) == self.__length
-        path: str = self.__path
-        for i in self.__word:
-            if not os.path.exists(path):
-                os.mkdir(path)
-            assert os.path.isdir(path)
-            path = os.path.join(path, name[:i])
-            name = name[i:]
-        return path
+    def __getitem__(self, key: str) -> bytes:
+        return self.__route(key).get(key=key)
+
+    def __delitem__(self, key: str):
+        assert self.__route(key).pop(key=key)
 
     def __get_store(self, name: str) -> store:
-        path: str = self.__get_path(name)
+        path: str = self.__names[name]
         index: str = f"{path}.idx"
         datas: str = f"{path}.dat"
         return store(name=name,
                      index=index,
                      datas=datas,
-                     test=self.__test,
+                     test=self.__names.test,
                      cachelru=self.__cachelru,
                      cachelfu=self.__cachelfu,
                      readonly=self.__readonly)
 
-    def route(self, key: str) -> store:
-        name: str = self.__get_name(key)
+    def __route(self, key: str) -> store:
+        name: str = self.__names.get_name(key)
         if name in self.__clfu:
             return self.__clfu[name]
         if name in self.__clru:
@@ -241,15 +226,3 @@ class ctrie:
         assert isinstance(stor, store)
         self.__clru[name] = stor
         return stor
-
-    def __contains__(self, key: str) -> bool:
-        return key in self.route(key)
-
-    def __setitem__(self, key: str, value: bytes):
-        assert self.route(key).put(key=key, value=value)
-
-    def __getitem__(self, key: str) -> bytes:
-        return self.route(key).get(key=key)
-
-    def __delitem__(self, key: str):
-        assert self.route(key).pop(key=key)

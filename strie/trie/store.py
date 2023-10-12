@@ -12,8 +12,13 @@ from ctypes import memmove
 from ctypes import sizeof
 import os
 from typing import BinaryIO
+from typing import Dict
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
+
+from ..utils import __prog__
+from ..utils import testckey
 
 uint8_t = c_uint8
 uint16_t = c_uint16
@@ -251,3 +256,144 @@ class dfile(mfile):
         assert hdl.write(value) == length
         self.endpos += length
         return offset
+
+
+class nfile(mfile):
+    '''
+    Names file
+    '''
+
+    MAGIC = b"\x3a\x33\xc5\xf9\x8b\x5c\x73\xa3"
+    SIZE_MAGIC = len(MAGIC)
+    MAX_FILES = 10**6
+
+    def __init__(self,
+                 path: str,
+                 word: Sequence[int],
+                 test: testckey,
+                 readonly: bool = True):
+        assert isinstance(path, str)
+        assert isinstance(word, Sequence)
+        assert isinstance(test, testckey)
+        assert os.path.isdir(path)
+        self.__path: str = path
+        self.__test: testckey = test
+        self.__word: Sequence[int] = tuple(int(i) for i in word)
+        for i in self.__word:
+            assert i > 0 and i < 256  # 1-255: 1 byte
+        self.__length: int = sum(self.__word)
+        self.__names: Dict[str, str] = {}
+        self.__nodes: int = len(self.__test.characters)**self.length
+        assert self.__nodes <= self.MAX_FILES
+        super().__init__(path=os.path.join(self.__path, __prog__),
+                         magic=self.MAGIC,
+                         readonly=readonly)
+        assert self.__load(True if self.endpos > self.SIZE_MAGIC else False)
+
+    @property
+    def test(self) -> testckey:
+        return self.__test
+
+    @property
+    def nodes(self) -> int:
+        return self.__nodes
+
+    @property
+    def length(self) -> int:
+        return self.__length
+
+    def __iter__(self):
+        return iter(self.__names)
+
+    def __contains__(self, name: str) -> bool:
+        return name in self.__names
+
+    def __getitem__(self, name: str) -> str:
+        if name not in self.__names:
+            self.__dump(name)
+        return self.__names[name]
+
+    def __check(self, key: str) -> bool:
+        if not isinstance(key, str):
+            return False
+        if len(key) < self.length:
+            return False
+        return self.test.check(key)
+
+    def get_name(self, key: str) -> str:
+        assert self.__check(key)
+        return key[:self.length]
+
+    def get_path(self, name: str) -> str:
+        assert isinstance(name, str)
+        assert len(name) == self.length
+        path: str = self.__path
+        for i in self.__word:
+            if not os.path.exists(path):
+                os.mkdir(path)
+            assert os.path.isdir(path)
+            path = os.path.join(path, name[:i])
+            name = name[i:]
+        return path
+
+    def __load(self, read: bool = True) -> bool:
+
+        num: int = len(self.__word)
+
+        class head(Structure):
+
+            _fields_ = [
+                ('word', uint8_t * num),
+                ('magic', uint8_t * self.SIZE_MAGIC),
+            ]
+
+        dat: head = head()
+        siz: int = sizeof(head)
+        hdl: Optional[BinaryIO] = self.handle
+        assert hdl is not None
+        assert hdl.tell() == self.SIZE_MAGIC
+
+        if read is True:
+            # read head data
+            assert self.endpos >= self.SIZE_MAGIC + siz
+            ctx = hdl.read(siz)
+            ptr = (c_char * siz).from_buffer(bytearray(ctx))
+            memmove(addressof(dat), ptr, siz)
+            if bytes(dat.magic) != self.MAGIC:
+                return False
+            for i in range(num):
+                if dat.word[i] != self.__word[i]:
+                    return False
+            # read all names
+            while hdl.tell() < self.endpos:
+                name: str = hdl.read(self.length).decode()
+                assert hdl.read(self.SIZE_MAGIC) == self.MAGIC
+                self.__names[name] = self.get_path(name)
+        else:
+            # write head data
+            assert self.endpos == self.SIZE_MAGIC
+            for i in range(num):
+                dat.word[i] = self.__word[i]
+            dat.magic = (uint8_t * self.SIZE_MAGIC)(*self.MAGIC)
+            ctx = bytes(dat)
+            assert len(ctx) == siz
+            assert hdl.write(ctx) == siz
+            self.endpos += siz
+
+        return True
+
+    def __dump(self, name: str) -> int:
+        assert isinstance(name, str)
+        assert name not in self.__names
+        data: bytes = name.encode()
+        offset: int = self.endpos
+        length: int = len(data)
+        assert length > 1
+        hdl: Optional[BinaryIO] = self.handle
+        assert hdl is not None
+        assert hdl.seek(0, 2) == offset
+        assert hdl.write(data) == length
+        assert hdl.write(self.MAGIC) == self.SIZE_MAGIC
+        self.__names[name] = self.get_path(name)
+        self.endpos += (length + self.SIZE_MAGIC)
+        return self.endpos
