@@ -1,11 +1,11 @@
 # coding:utf-8
 
 from ..utils import testckey
-from .radix import radix
+from .rtree import radix
 
 
 def checkhkey(key: str, len: int) -> bool:
-    if len < 2:
+    if len < 1:
         return False
     return True
 

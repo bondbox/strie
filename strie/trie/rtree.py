@@ -1,17 +1,20 @@
 # coding:utf-8
 
-from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 
 from ..utils import testckey
+
+VT = TypeVar("VT")  # Value type.
+VTT = TypeVar("VTT")  # Value type.
 
 testskey = testckey(allowed_char=testckey.skey)
 
 
-class radix:
+class radix(Dict[str, VT]):
     """
     Radix tree
     """
@@ -19,14 +22,14 @@ class radix:
     LEAFS = 128
     NODES = 256
 
-    class store:
+    class store(Dict[str, VTT]):
 
         def __init__(self, threshold: int):
             assert isinstance(threshold, int) and threshold > 0
             self.__upper: int = min(threshold, radix.LEAFS)
             self.__lower: int = int(threshold / 2)
             self.__stats: List[int] = [0] * radix.NODES
-            self.__items: Dict[str, Any] = {}
+            self.__items: Dict[str, VTT] = {}
 
         @property
         def stats(self) -> List[int]:
@@ -52,10 +55,10 @@ class radix:
         def __contains__(self, key: str) -> bool:
             return key in self.__items
 
-        def __setitem__(self, key: str, value: Any):
+        def __setitem__(self, key: str, value: VTT):
             self.put(key=key, value=value)
 
-        def __getitem__(self, key: str) -> Any:
+        def __getitem__(self, key) -> VTT:
             return self.__items[key]
 
         def __delitem__(self, key: str):
@@ -63,7 +66,7 @@ class radix:
                 self.__stats[ord(key[0])] -= 1
             del self.__items[key]
 
-        def put(self, key: str, value: Any) -> bool:
+        def put(self, key: str, value: VTT) -> bool:
             split = False
             if key not in self.__items and key != "":
                 index = ord(key[0])
@@ -90,7 +93,7 @@ class radix:
         self.__test: testckey = test
         self.__root: Optional[radix] = root
         self.__tack: bool = True if root is None else False
-        self.__leafs: radix.store = radix.store(threshold=maximum)
+        self.__leafs: radix.store[VT] = radix.store(threshold=maximum)
         self.__nodes: Dict[str, radix] = {}
         self.__count: int = 0
         self.__iter_objs: List[Tuple[str, radix]] = []
@@ -120,7 +123,7 @@ class radix:
         return list(self.__nodes.values())
 
     @property
-    def leafs(self) -> List[Any]:
+    def leafs(self) -> List[str]:
         return self.__leafs.keys()
 
     @property
@@ -157,7 +160,7 @@ class radix:
 
     def __contains__(self, key: str) -> bool:
         assert isinstance(key, str)
-        obj: radix = self
+        obj: radix[VT] = self
         while True:
             assert obj.__check(key)
             key = obj.__nickname(key)
@@ -167,10 +170,10 @@ class radix:
                 continue
             return key in obj.__leafs
 
-    def __setitem__(self, key: str, value: Any):
+    def __setitem__(self, key: str, value: VT):
         assert self.put(key=key, value=value, modify=True)
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> VT:
         return self.get(key=key)
 
     def __delitem__(self, key: str):
@@ -258,7 +261,7 @@ class radix:
         split new node
         '''
         prefix = key[0]
-        obj: radix = self
+        obj: radix[VT] = self
 
         def recheck(curr: radix):
             while curr.__root is not None and not curr.__root.__tack:
@@ -280,7 +283,7 @@ class radix:
         while True:
             assert obj.__get_node(prefix) is None
 
-            newobj: radix = radix(prefix=prefix, root=obj)
+            newobj: radix[VT] = radix(prefix=prefix, root=obj)
             obj.__set_node(value=newobj, modify=modify)
 
             for i in range(radix.NODES + 1):
@@ -350,11 +353,11 @@ class radix:
             tmp = tmp.__root
         return self.__set_node(obj)
 
-    def put(self, key: str, value: Any, modify: bool = True) -> bool:
+    def put(self, key: str, value: VT, modify: bool = True) -> bool:
         assert self.__test.check(key) and self.__check(key)
         assert isinstance(modify, bool)
 
-        obj: radix = self
+        obj: radix[VT] = self
 
         while True:
             key = obj.__nickname(key)
@@ -379,9 +382,9 @@ class radix:
                 obj.__split_node(key=key, modify=modify)
             return True
 
-    def get(self, key: str) -> Any:
+    def get(self, key: str) -> VT:
         assert isinstance(key, str)
-        obj: radix = self
+        obj: radix[VT] = self
         while True:
             assert obj.__check(key)
             key = obj.__nickname(key)
@@ -393,7 +396,7 @@ class radix:
 
     def pop(self, key: str) -> bool:
         assert isinstance(key, str) and self.__check(key)
-        obj: radix = self
+        obj: radix[VT] = self
 
         while True:
             key = obj.__nickname(key)
@@ -416,7 +419,7 @@ class radix:
 
     def trim(self, key: str) -> int:
         assert isinstance(key, str)
-        obj: radix = self
+        obj: radix[VT] = self
         sum: int = 0
 
         while len(key) >= 0:

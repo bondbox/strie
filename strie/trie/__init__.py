@@ -1,7 +1,7 @@
 # coding:utf-8
 
-from .ctrie import ctrie
-from .htrie import htrie
-from .htrie import testhkey
-from .radix import radix
-from .radix import testskey
+from .ctree import ctrie
+from .htree import htrie
+from .htree import testhkey
+from .rtree import radix
+from .rtree import testskey
