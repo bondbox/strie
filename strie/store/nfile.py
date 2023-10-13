@@ -10,9 +10,7 @@ from ctypes import c_uint64
 from ctypes import memmove
 from ctypes import sizeof
 import os
-from typing import BinaryIO
 from typing import Dict
-from typing import Optional
 from typing import Sequence
 
 from ..utils import __prog__
@@ -56,7 +54,7 @@ class nhdl(mhdl):
         super().__init__(path=os.path.join(self.__path, __prog__),
                          magic=self.MAGIC,
                          readonly=readonly)
-        assert self.__load(True if self.endpos > self.SIZE_MAGIC else False)
+        assert self.__load()
 
     @property
     def test(self) -> testckey:
@@ -104,8 +102,7 @@ class nhdl(mhdl):
             name = name[i:]
         return path
 
-    def __load(self, read: bool = True) -> bool:
-
+    def __load(self) -> bool:
         num: int = len(self.__word)
 
         class head(Structure):
@@ -117,14 +114,12 @@ class nhdl(mhdl):
 
         dat: head = head()
         siz: int = sizeof(head)
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        assert hdl.tell() == self.SIZE_MAGIC
 
-        if read is True:
+        if self.endpos > self.SIZE_MAGIC:
             # read head data
+            assert self.tell() == self.SIZE_MAGIC
             assert self.endpos >= self.SIZE_MAGIC + siz
-            ctx = hdl.read(siz)
+            ctx = self.read(siz)
             ptr = (c_char * siz).from_buffer(bytearray(ctx))
             memmove(addressof(dat), ptr, siz)
             if bytes(dat.magic) != self.MAGIC:
@@ -133,9 +128,9 @@ class nhdl(mhdl):
                 if dat.word[i] != self.__word[i]:
                     return False
             # read all names
-            while hdl.tell() < self.endpos:
-                name: str = hdl.read(self.length).decode()
-                assert hdl.read(self.SIZE_MAGIC) == self.MAGIC
+            while self.tell() < self.endpos:
+                name: str = self.read(self.length).decode()
+                assert self.read(self.SIZE_MAGIC) == self.MAGIC
                 self.__names[name] = self.get_path(name)
         else:
             # write head data
@@ -145,23 +140,16 @@ class nhdl(mhdl):
             dat.magic = (uint8_t * self.SIZE_MAGIC)(*self.MAGIC)
             ctx = bytes(dat)
             assert len(ctx) == siz
-            assert hdl.write(ctx) == siz
-            self.endpos += siz
+            assert self.write(ctx) == siz
 
         return True
 
     def __dump(self, name: str) -> int:
         assert isinstance(name, str)
         assert name not in self.__names
-        data: bytes = name.encode()
-        offset: int = self.endpos
+        data: bytes = name.encode() + self.MAGIC
         length: int = len(data)
-        assert length > 1
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        assert hdl.seek(0, 2) == offset
-        assert hdl.write(data) == length
-        assert hdl.write(self.MAGIC) == self.SIZE_MAGIC
+        assert length > self.SIZE_MAGIC
+        assert self.write(data) == length
         self.__names[name] = self.get_path(name)
-        self.endpos += (length + self.SIZE_MAGIC)
         return self.endpos

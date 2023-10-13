@@ -1,17 +1,22 @@
 # coding:utf-8
 
-from ctypes import c_uint8
-from ctypes import c_uint16
-from ctypes import c_uint32
-from ctypes import c_uint64
+import hashlib
 import os
+import shutil
 from typing import BinaryIO
 from typing import Optional
 
-uint8_t = c_uint8
-uint16_t = c_uint16
-uint32_t = c_uint32
-uint64_t = c_uint64
+
+def md5sum(file: str) -> str:
+    assert isinstance(file, str)
+    with open(file, "rb") as fhdl:
+        md5_hash = hashlib.md5()
+        while True:
+            data = fhdl.read(1024**2)
+            if not data:
+                break
+            md5_hash.update(data)
+    return md5_hash.hexdigest()
 
 
 class mhdl:
@@ -23,72 +28,156 @@ class mhdl:
         assert isinstance(path, str)
         assert isinstance(magic, bytes)
         assert isinstance(readonly, bool)
-        create: bool = not os.path.exists(path)
-        handle: BinaryIO = open(path, "rb" if readonly else "ab+")
+        msize: int = len(magic)
+        assert msize > 0
+
+        def open_check(readonly: bool) -> bool:
+            if not readonly:
+                # Check backup before writing
+                assert not os.path.exists(self.bakpath), \
+                    f"Backup {self.bakpath} exists"
+            return os.path.exists(self.path)
+
         self.__path: str = path
+        self.__msize: int = msize
         self.__magic: bytes = magic
-        self.__msize: int = len(magic)
-        if create:
+        self.__readonly: bool = readonly
+        create: bool = not open_check(readonly)  # Check backup before open
+        handle: BinaryIO = open(path, "rb" if self.readonly else "ab+")
+        if create and not self.readonly:
             assert handle.write(self.__magic) == self.__msize
-        self.__endpos: int = handle.tell()
-        assert self.__endpos >= self.__msize
         self.__handle: Optional[BinaryIO] = handle
+        self.__endpos: int = handle.seek(0, 2)
         assert self.check()
 
     def __del__(self):
-        self.sync()
-        self.close()
+        assert self.close()
 
     def sync(self):
-        if self.handle is not None:
-            os.fsync(self.handle)
+        if self.__handle is not None and not self.readonly:
+            os.fsync(self.__handle)
 
-    def close(self):
-        if self.handle is not None:
-            self.handle.close()
-            self.handle = None
-            self.endpos = -1
+    def close(self) -> bool:
+        if self.__handle is not None:
+            if not self.readonly:
+                os.fsync(self.__handle)
+            self.__handle.close()
+            self.__handle = None
+            self.__endpos = -1
+        return self.__handle is None
+
+    def reopen(self, path: Optional[str] = None) -> bool:
+        if path is None:
+            path = self.path
+        assert isinstance(path, str)
+        # Not create new file
+        if not os.path.isfile(path):
+            return False
+        # Close current file before open another
+        if self.path != path:
+            self.close()
+        if self.__handle is None:
+            assert os.path.isfile(path)
+            assert not os.path.exists(self.bakpath)
+            handle: BinaryIO = open(path, "rb" if self.readonly else "ab+")
+            if handle is None:
+                return False
+            self.__handle = handle
+            self.__endpos = handle.seek(0, 2)
+            assert self.check()
+        # Success and modify path
+        assert self.__handle is not None
+        self.__path = path
+        return True
 
     def check(self) -> bool:
-        if self.handle is None:
+        if self.__handle is None:
             return False
-        if self.handle.seek(0, 0) != 0:
+        if self.endpos < self.msize:
             return False
-        return self.handle.read(self.__msize) == self.__magic
+        if self.__handle.seek(0, 0) != 0:
+            return False
+        return self.__handle.read(self.__msize) == self.__magic
 
     @property
     def path(self) -> str:
         return self.__path
 
     @property
-    def handle(self) -> Optional[BinaryIO]:
-        return self.__handle
+    def bakpath(self) -> str:
+        return self.get_bakpath(self.path)
 
-    @handle.setter
-    def handle(self, v: Optional[BinaryIO]):
-        if v is not None:
-            assert isinstance(v, BinaryIO)
-            assert v.seek(0, 0) == 0
-            assert v.read(self.__msize) == self.__magic
-        self.__handle = v
+    @property
+    def readonly(self) -> bool:
+        return self.__readonly
 
     @property
     def endpos(self) -> int:
         assert self.__handle is not None
         return self.__endpos
 
-    @endpos.setter
-    def endpos(self, v: int):
-        if v > 0:
-            assert self.__handle is not None
-        else:
-            assert self.__handle is None
-        self.__endpos = v
+    @property
+    def msize(self) -> int:
+        return self.__msize
 
     @property
     def magic(self) -> bytes:
         return self.__magic
 
-    @property
-    def msize(self) -> int:
-        return self.__msize
+    def tell(self) -> int:
+        assert self.__handle is not None
+        return self.__handle.tell()
+
+    def seek(self, offset: int, whence: int = 0) -> int:
+        assert self.__handle is not None
+        return self.__handle.seek(offset, whence)
+
+    def read(self, length: int) -> bytes:
+        assert self.__handle is not None
+        assert isinstance(length, int) and length > 0
+        value: bytes = self.__handle.read(length)
+        assert isinstance(value, bytes)
+        assert len(value) == length
+        return value
+
+    def write(self, value: bytes) -> int:
+        assert isinstance(value, bytes)
+        assert self.__handle is not None
+        assert self.__readonly is False
+        offset: int = self.endpos
+        length: int = len(value)
+        assert length > 0
+        assert self.__handle.seek(0, 2) == offset, f"{self.path}:"\
+            f"{offset} != {self.__handle.tell()}, length:{length}"
+
+        try:
+            return self.__handle.write(value)
+        finally:
+            self.__endpos = self.__handle.seek(0, 2)
+
+    def rename(self, path: str, reopen: bool = True) -> bool:
+        '''
+        Rename and reopen
+        '''
+        assert isinstance(path, str)
+        assert isinstance(reopen, bool)
+        if self.path == path:
+            return True
+        assert not os.path.exists(path), f"{path} already exists"
+        assert os.path.isfile(self.path), f"Non-existent {self.path}"
+        self.close()  # close before move
+        assert shutil.move(src=self.path, dst=path) == path
+        assert os.path.isfile(path), f"Non-existent {path}"
+        assert not os.path.exists(self.path), f"{self.path} still exists"
+        return True if not reopen else self.reopen(path)
+
+    def backup(self) -> bool:
+        '''
+        Close and backup
+        '''
+        return self.rename(self.bakpath, False)
+
+    @classmethod
+    def get_bakpath(cls, path: str) -> str:
+        assert isinstance(path, str)
+        return f"{path}.bak"

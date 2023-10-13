@@ -103,6 +103,10 @@ class radix(Dict[str, VT]):
     def name(self) -> str:
         return self.__fullname()
 
+    @property
+    def test(self) -> testckey:
+        return self.__test
+
     def nick(self, key: str) -> str:
         return self.__nickname(key)
 

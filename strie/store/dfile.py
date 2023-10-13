@@ -10,7 +10,6 @@ from ctypes import c_uint32
 from ctypes import c_uint64
 from ctypes import memmove
 from ctypes import sizeof
-from typing import BinaryIO
 from typing import Optional
 from typing import Tuple
 
@@ -45,23 +44,14 @@ class dhdl(mhdl):
         assert offset >= self.SIZE_MAGIC
         assert length > 0
         assert offset + length <= self.endpos
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        assert hdl.seek(offset) == offset
-        assert hdl.tell() == offset
-        return hdl.read(length)
+        assert self.seek(offset) == offset
+        assert self.tell() == offset
+        return self.read(length)
 
     def dump(self, value: bytes) -> int:
-        assert isinstance(value, bytes)
-        offset: int = self.endpos
         length: int = len(value)
-        assert length > 0
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        assert hdl.seek(0, 2) == offset
-        assert hdl.write(value) == length
-        self.endpos += length
-        return offset
+        assert self.write(value) == length
+        return self.endpos - length
 
 
 class didx:
@@ -79,8 +69,8 @@ class didx:
 
     SIZE_DATA = sizeof(data)
 
-    def __init__(self, offset: int, length: int, chksum: int = 0):
-        assert isinstance(offset, int) and offset >= ihdl.SIZE_MAGIC
+    def __init__(self, offset: int, length: int, chksum: int = -1):
+        assert isinstance(offset, int) and offset >= dhdl.SIZE_MAGIC
         assert isinstance(length, int) and length > 0
         assert isinstance(chksum, int)
         self.__data = self.data()
@@ -100,11 +90,25 @@ class didx:
     def chksum(self) -> int:
         return self.__data.chksum
 
-    def check(self, value: bytes) -> bool:
+    @classmethod
+    def calc(cls, value: bytes) -> int:
         assert isinstance(value, bytes)
-        return binascii.crc32(value) == self.__data.chksum
+        return binascii.crc32(value)
+
+    def check(self) -> bool:
+        if self.offset < dhdl.SIZE_MAGIC:
+            return False
+        if self.length <= 0:
+            return False
+        if self.chksum < 0:
+            return False
+        return True
+
+    def verify(self, value: bytes) -> bool:
+        return self.calc(value) == self.__data.chksum
 
     def dump(self) -> bytes:
+        assert self.check()
         return bytes(self.__data)
 
     @classmethod
@@ -117,9 +121,7 @@ class didx:
 
     @classmethod
     def new(cls, offset: int, value: bytes) -> "didx":
-        return didx(offset=offset,
-                    length=len(value),
-                    chksum=binascii.crc32(value))
+        return didx(offset=offset, length=len(value), chksum=cls.calc(value))
 
 
 class ihdl(mhdl):
@@ -146,46 +148,37 @@ class ihdl(mhdl):
         return self
 
     def __next__(self) -> Tuple[str, Optional[didx]]:
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        if hdl.tell() < self.endpos:
+        if self.tell() < self.endpos:
             return self.__load()
         raise StopIteration
 
     def __load(self) -> Tuple[str, Optional[didx]]:
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        assert hdl.tell() < self.endpos
+        assert self.tell() < self.endpos
         res = self.head()
-        ctx = hdl.read(self.SIZE_HEAD)
+        ctx = self.read(self.SIZE_HEAD)
         ptr = (c_char * self.SIZE_HEAD).from_buffer(bytearray(ctx))
         memmove(addressof(res), ptr, self.SIZE_HEAD)
         length: int = res.keylen
-        key: str = hdl.read(length).decode() if length >= 0 else ""
+        key: str = self.read(length).decode() if length >= 0 else ""
         if res.delkey:
             return key, None
-        idx = didx.load(hdl.read(didx.SIZE_DATA))
+        idx = didx.load(self.read(didx.SIZE_DATA))
         return key, idx
 
     def dump(self, key: str, value: Optional[didx]) -> bool:
         assert isinstance(key, str)
         assert isinstance(value, didx) or value is None
         delete: bool = True if value is None else False
-        res = self.head()
+        res: ihdl.head = self.head()
         res.keylen = len(key)
         res.delkey = delete
-        ctx = bytes(res)
-        assert len(ctx) == self.SIZE_HEAD
-        hdl: Optional[BinaryIO] = self.handle
-        assert hdl is not None
-        assert hdl.seek(0, 2) == self.endpos
-        assert hdl.write(ctx) == self.SIZE_HEAD
-        self.endpos += self.SIZE_HEAD
-        dat = key.encode()
-        assert hdl.write(dat) == len(dat)
-        self.endpos += len(dat)
+        dat: bytes = key.encode()
+        ctx: bytes = bytes(res) + dat
+        num: int = self.SIZE_HEAD + len(dat)
         if not delete:
             assert isinstance(value, didx)
-            assert hdl.write(value.dump()) == didx.SIZE_DATA
-            self.endpos += didx.SIZE_DATA
+            ctx += value.dump()
+            num += didx.SIZE_DATA
+        assert len(ctx) == num
+        assert self.write(ctx) == num
         return True
