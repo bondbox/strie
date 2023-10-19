@@ -241,6 +241,7 @@ class radix(Dict[str, VT]):
                 self.__iter_objs.append((name, node))
                 curr.extend(node.child)
             prev = curr
+        self.__iter_objs.sort(key=lambda t: t[0], reverse=True)
 
         return self
 
@@ -256,6 +257,7 @@ class radix(Dict[str, VT]):
             if len(self.__iter_objs) > 0:
                 name, node = self.__iter_objs.pop()
                 self.__iter_keys.extend([name + k for k in node.leafs])
+                self.__iter_keys.sort(reverse=True)
                 continue
 
             raise StopIteration

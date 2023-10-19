@@ -4,6 +4,7 @@ import os
 from tempfile import TemporaryDirectory
 from typing import Dict
 from typing import Generic
+from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -127,9 +128,7 @@ class store(Dict[str, bytes]):
         return len(self.index)
 
     def __iter__(self):
-        obj = self.index
-        iter(obj)
-        return obj
+        return iter(self.index)
 
     def __contains__(self, key: str) -> bool:
         return key in self.index
@@ -454,6 +453,26 @@ class ctrie:
         self.__scache: cache[str, store] = cache(max(cacheobj, cache.MINIMUM))
         self.__dcache: cache[str, bytes] = cache(max(cachemax, cache.MINIMUM))
         self.__readonly: bool = readonly
+        self.__iter_name: List[str] = []
+        self.__iter_curr: Optional[radix[didx]] = None
+
+    def __iter__(self):
+        self.__iter_name = [i for i in self.__names]
+        if len(self.__iter_name) > 0:
+            self.__iter_name.sort(reverse=True)
+            self.__iter_curr = iter(self.__route(self.__iter_name.pop()))
+        return self
+
+    def __next__(self):
+        while self.__iter_curr is not None:
+            try:
+                return next(self.__iter_curr)
+            except StopIteration:
+                if len(self.__iter_name) == 0:
+                    self.__iter_curr = None
+                    continue
+                self.__iter_curr = iter(self.__route(self.__iter_name.pop()))
+        raise StopIteration
 
     def __contains__(self, key: str) -> bool:
         assert isinstance(key, str)
