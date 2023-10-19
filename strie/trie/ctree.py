@@ -4,6 +4,7 @@ import os
 from tempfile import TemporaryDirectory
 from typing import Dict
 from typing import Generic
+from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import TypeVar
@@ -24,6 +25,45 @@ KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
 
 
+class cache(Generic[KT, VT]):
+
+    MINIMUM = 100
+
+    def __init__(self, cachemax: int):
+        assert isinstance(cachemax, int)
+        assert cachemax >= self.MINIMUM, f"{cachemax} less than {self.MINIMUM}"
+        nlru: int = int(cachemax * 40 / 100)
+        self.__clru: LRUCache[KT, VT] = LRUCache(maxsize=nlru)
+        self.__clfu: LFUCache[KT, VT] = LFUCache(maxsize=cachemax - nlru)
+
+    def __contains__(self, key: KT) -> bool:
+        return key in self.__clru or key in self.__clfu
+
+    def __getitem__(self, key: KT) -> VT:
+        if key in self.__clru:
+            value = self.__clru[key]
+            if key not in self.__clfu:
+                self.__clfu[key] = value
+            assert self.__clfu[key] is value
+        elif key in self.__clfu:
+            value = self.__clfu[key]
+            self.__clru[key] = value
+        return self.__clfu[key]
+
+    def __setitem__(self, key: KT, value: VT):
+        if key in self.__clfu:
+            self.__clfu[key] = value
+        self.__clru[key] = value
+
+    def __delitem__(self, key: KT):
+        if key in self.__clfu:
+            del self.__clfu[key]
+        if key in self.__clru:
+            del self.__clru[key]
+        assert key not in self.__clfu
+        assert key not in self.__clru
+
+
 class store(Dict[str, bytes]):
     """
     Store radix trees
@@ -39,32 +79,60 @@ class store(Dict[str, bytes]):
                  ipath: str,
                  dpath: str,
                  test: testckey,
-                 readonly: bool = True):
-        assert self.restore(ipath, dpath)
+                 readonly: bool = True,
+                 icache: Optional[cache[str, radix[didx]]] = None):
+        assert isinstance(name, str)
+        assert isinstance(icache, cache) or icache is None
         assert isinstance(readonly, bool)
+        assert self.restore(ipath, dpath)
+        if icache is not None and name in icache:
+            index: radix[didx] = icache[name]
+            reload: bool = False
+        else:
+            if icache is not None:
+                assert name not in icache
+            index: radix[didx] = radix(prefix=name, test=test)
+            reload: bool = True
+        assert isinstance(reload, bool)
+        assert isinstance(index, radix)
+        assert index.prefix == name
+        assert index.test is test
+        self.__name: str = name
         self.__count: int = 0
         self.__readonly: bool = readonly
-        self.__index: radix[didx] = radix(prefix=name, test=test)
+        self.__index: radix[didx] = index
+        self.__cache: Optional[cache[str, radix[didx]]] = icache
         self.__ihdl: ihdl = ihdl(path=ipath, readonly=readonly)
         self.__dhdl: dhdl = dhdl(path=dpath, readonly=readonly)
-        assert self.__load_index()
+        if reload is True:
+            assert self.__load_index()
 
     def __del__(self):
-        pass
+        if self.__cache is not None:
+            self.__cache[self.__name] = self.__index
+
+    @property
+    def index(self) -> radix[didx]:
+        if self.__cache is None:
+            return self.__index
+        if self.__name not in self.__cache:
+            self.__cache[self.__name] = self.__index
+        return self.__cache[self.__name]
 
     @property
     def readonly(self) -> bool:
         return self.__readonly
 
     def __len__(self) -> int:
-        return len(self.__index)
+        return len(self.index)
 
     def __iter__(self):
-        iter(self.__index)
-        return self.__index
+        obj = self.index
+        iter(obj)
+        return obj
 
     def __contains__(self, key: str) -> bool:
-        return key in self.__index
+        return key in self.index
 
     def __setitem__(self, key: str, value: bytes):
         assert self.put(key=key, value=value)
@@ -76,17 +144,17 @@ class store(Dict[str, bytes]):
         assert self.pop(key=key)
 
     def __load_index(self) -> bool:
-        prefix: str = self.__index.prefix
+        prefix: str = self.index.prefix
         for k, v in self.__ihdl:
             self.__count += 1
             key = prefix + k
             assert isinstance(key, str)
             if v is None:
-                assert key in self.__index
-                del self.__index[key]
+                assert key in self.index
+                del self.index[key]
                 continue
             assert isinstance(v, didx)
-            self.__index[key] = v
+            self.index[key] = v
         if not self.readonly:
             # gc after load index
             assert self.__gc(force=False)
@@ -99,10 +167,10 @@ class store(Dict[str, bytes]):
         self.__count += 1
         if delete is True:
             # delete key
-            assert self.__ihdl.dump(self.__index.nick(key), None)
+            assert self.__ihdl.dump(self.index.nick(key), None)
         else:
             # create or update key
-            assert self.__ihdl.dump(self.__index.nick(key), self.__index[key])
+            assert self.__ihdl.dump(self.index.nick(key), self.index[key])
         return True
 
     def __gc(self, force: bool = False) -> bool:
@@ -113,8 +181,8 @@ class store(Dict[str, bytes]):
             if not force:
                 realsize: int = 0
                 datasize: int = self.__dhdl.dsize
-                for key in self.__index:
-                    idx: didx = self.__index[key]
+                for key in self.index:
+                    idx: didx = self.index[key]
                     realsize += idx.length
                 assert datasize >= realsize
                 if datasize - realsize < self.DAT_GC_MIN_DEL:
@@ -125,7 +193,7 @@ class store(Dict[str, bytes]):
             return True
 
         def test_gc_index(force: bool = False) -> bool:
-            idxnum: int = len(self.__index)
+            idxnum: int = len(self.index)
             assert self.__count >= idxnum, f"{self.__count} less than {idxnum}"
             if idxnum == self.__count:
                 return False
@@ -145,11 +213,12 @@ class store(Dict[str, bytes]):
                     f"Datas backup {self.__dhdl.bakpath} already exists"
                 if test_gc_datas(force=force):
                     # gc index and data
-                    stor: store = store(name=self.__index.prefix,
+                    stor: store = store(name=self.index.prefix,
                                         ipath=os.path.join(tempdir, "idx.gc"),
                                         dpath=os.path.join(tempdir, "dat.gc"),
-                                        test=self.__index.test,
-                                        readonly=False)
+                                        test=self.index.test,
+                                        readonly=False,
+                                        icache=None)
                     for key in self:
                         datas: bytes = self.get(key)
                         assert isinstance(datas, bytes)
@@ -166,17 +235,22 @@ class store(Dict[str, bytes]):
                     # data overwritten, update index
                     self.__ihdl = stor.__ihdl
                     self.__dhdl = stor.__dhdl
-                    self.__index = stor.__index
+                    self.__index = stor.index
+                    if self.__cache is not None:
+                        if self.__name in self.__cache:
+                            del self.__cache[self.__name]
+                        assert self.__name not in self.__cache
+                        self.__cache[self.__name] = stor.index
                     os.remove(self.__ihdl.bakpath)
                     os.remove(self.__dhdl.bakpath)
                 else:
                     # only gc index
                     hidx: ihdl = ihdl(path=os.path.join(tempdir, "idx.gc"),
                                       readonly=False)
-                    for key in self.__index:
-                        index: didx = self.__index[key]
+                    for key in self.index:
+                        index: didx = self.index[key]
                         assert isinstance(index, didx)
-                        assert hidx.dump(self.__index.nick(key), index)
+                        assert hidx.dump(self.index.nick(key), index)
                     # backup and update
                     assert self.__ihdl.backup(), \
                         f"Create index bcakup {self.__ihdl.bakpath} failed"
@@ -325,12 +399,12 @@ class store(Dict[str, bytes]):
         info: didx = didx.new(offset=self.__dhdl.dump(value), value=value)
         self.__dhdl.sync()
         assert isinstance(info, didx)
-        self.__index[key] = info
+        self.index[key] = info
         return self.__dump_index(key)
 
     def get(self, key: str) -> bytes:
         assert isinstance(key, str)
-        inf: didx = self.__index[key]
+        inf: didx = self.index[key]
         assert isinstance(inf, didx)
         off: int = inf.offset
         len: int = inf.length
@@ -342,47 +416,8 @@ class store(Dict[str, bytes]):
 
     def pop(self, key: str) -> bool:
         assert not self.readonly
-        del self.__index[key]
+        del self.index[key]
         return self.__dump_index(key, True)
-
-
-class cache(Generic[KT, VT]):
-
-    MINIMUM = 100
-
-    def __init__(self, cachemax: int):
-        assert isinstance(cachemax, int)
-        assert cachemax >= self.MINIMUM
-        nlru: int = int(cachemax * 40 / 100)
-        self.__clru: LRUCache[KT, VT] = LRUCache(maxsize=nlru)
-        self.__clfu: LFUCache[KT, VT] = LFUCache(maxsize=cachemax - nlru)
-
-    def __contains__(self, key: KT) -> bool:
-        return key in self.__clru or key in self.__clfu
-
-    def __getitem__(self, key: KT) -> VT:
-        if key in self.__clru:
-            value = self.__clru[key]
-            if key not in self.__clfu:
-                self.__clfu[key] = value
-            assert self.__clfu[key] is value
-        elif key in self.__clfu:
-            value = self.__clfu[key]
-            self.__clru[key] = value
-        return self.__clfu[key]
-
-    def __setitem__(self, key: KT, value: VT):
-        if key in self.__clfu:
-            self.__clfu[key] = value
-        self.__clru[key] = value
-
-    def __delitem__(self, key: KT):
-        if key in self.__clfu:
-            del self.__clfu[key]
-        if key in self.__clru:
-            del self.__clru[key]
-        assert key not in self.__clfu
-        assert key not in self.__clru
 
 
 class ctrie:
@@ -390,16 +425,18 @@ class ctrie:
     Caching and persisting radix trees
     """
 
-    MAX_NODES = 10**3  # TODO: OSError: [Errno 24] Too many open files
-    MIN_NODES = 10**2
+    MAX_NODES = int(10**3 / 2)  # TODO: OSError: [Errno 24] Too many open files
+    MIN_NODES = int(10**2 / 2)
 
     def __init__(self,
                  path: str = ".",
                  word: Sequence[int] = (2, ),
                  test: testckey = testskey,
+                 cacheidx: int = 10**4,
                  cachemax: int = 10**6,
                  readonly: bool = True):
         assert isinstance(path, str)
+        assert isinstance(cacheidx, int)
         assert isinstance(cachemax, int)
         assert isinstance(readonly, bool)
         if not os.path.exists(path):
@@ -410,8 +447,10 @@ class ctrie:
                                   word=word,
                                   test=test,
                                   readonly=readonly)
-        cacheobj: int = min(max(int(self.__names.nodes / 2), self.MIN_NODES),
-                            self.MAX_NODES)
+        nodes: int = self.__names.nodes
+        cacheobj: int = nodes if nodes < self.MAX_NODES else min(
+            max(int(nodes / 2), self.MIN_NODES), self.MAX_NODES)
+        self.__icache: cache[str, radix] = cache(max(cacheidx, cache.MINIMUM))
         self.__scache: cache[str, store] = cache(max(cacheobj, cache.MINIMUM))
         self.__dcache: cache[str, bytes] = cache(max(cachemax, cache.MINIMUM))
         self.__readonly: bool = readonly
@@ -460,7 +499,8 @@ class ctrie:
                      ipath=ipath,
                      dpath=dpath,
                      test=self.__names.test,
-                     readonly=self.__readonly)
+                     readonly=self.__readonly,
+                     icache=self.__icache)
 
     def __route(self, key: str) -> store:
         name: str = self.__names.get_name(key)
