@@ -142,8 +142,8 @@ class mhdl:
 
     def write(self, value: bytes) -> int:
         assert isinstance(value, bytes)
-        assert self.__handle is not None
-        assert self.__readonly is False
+        assert self.__handle is not None, "Invalid file handle"
+        assert self.__readonly is False, f"Write read-only file {self.path}"
         offset: int = self.endpos
         length: int = len(value)
         assert length > 0

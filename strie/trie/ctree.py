@@ -160,7 +160,7 @@ class store(Dict[str, bytes]):
         return True
 
     def __dump_index(self, key: str, delete: bool = False) -> bool:
-        assert not self.readonly
+        assert not self.readonly, "Read-only object"
         assert isinstance(key, str)
         assert isinstance(delete, bool)
         self.__count += 1
@@ -392,7 +392,7 @@ class store(Dict[str, bytes]):
         return ret
 
     def put(self, key: str, value: bytes) -> bool:
-        assert not self.readonly
+        assert not self.readonly, "Read-only object"
         assert isinstance(key, str)
         assert isinstance(value, bytes)
         info: didx = didx.new(offset=self.__dhdl.dump(value), value=value)
@@ -414,7 +414,7 @@ class store(Dict[str, bytes]):
         return dat
 
     def pop(self, key: str) -> bool:
-        assert not self.readonly
+        assert not self.readonly, "Read-only object"
         del self.index[key]
         return self.__dump_index(key, True)
 
