@@ -11,6 +11,7 @@ from ctypes import memmove
 from ctypes import sizeof
 import os
 from typing import Dict
+from typing import List
 from typing import Sequence
 
 from ..utils import __prog__
@@ -30,6 +31,7 @@ class nhdl(mhdl):
 
     MAGIC = b"\x3a\x33\xc5\xf9\x8b\x5c\x73\xa3"
     SIZE_MAGIC = len(MAGIC)
+    SIZE_SUPER = 4096
     MAX_FILES = 10**6
 
     def __init__(self,
@@ -102,46 +104,133 @@ class nhdl(mhdl):
             name = name[i:]
         return path
 
-    def __load(self) -> bool:
-        num: int = len(self.__word)
+    @classmethod
+    def file(cls, path: str) -> str:
+        assert isinstance(path, str)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        assert os.path.isdir(path)
+        return os.path.join(path, __prog__)
 
-        class head(Structure):
+    @classmethod
+    def init(cls, path: str, word: Sequence[int], test: testakey) -> bool:
+        assert isinstance(path, str)
+        assert isinstance(word, Sequence)
+        assert isinstance(test, testakey)
+
+        file: str = cls.file(path)
+        if os.path.exists(file):
+            return False
+
+        chrs: List[int] = [ord(i) for i in test.characters]
+        numc: int = len(chrs)
+        numw: int = len(word)
+
+        assert numw < 256
+        for i in word:
+            assert isinstance(i, int)
+            assert i > 0 and i < 256
+
+        class superblock(Structure):
 
             _fields_ = [
-                ('word', uint8_t * num),
-                ('magic', uint8_t * self.SIZE_MAGIC),
+                ("magic", uint8_t * cls.SIZE_MAGIC),
+                ("charn", uint8_t),
+                ("wordn", uint8_t),
+                ("chars", uint8_t * numc),
+                ("words", uint8_t * numw),
+                ("length", uint16_t),
             ]
 
-        dat: head = head()
-        siz: int = sizeof(head)
+        dat: superblock = superblock()
+        siz: int = sizeof(superblock)
+        assert siz <= cls.SIZE_SUPER
 
-        if self.endpos > self.SIZE_MAGIC:
-            # read head data
-            assert self.tell() == self.SIZE_MAGIC
-            assert self.endpos >= self.SIZE_MAGIC + siz
-            ctx = self.read(siz)
-            ptr = (c_char * siz).from_buffer(bytearray(ctx))
-            memmove(addressof(dat), ptr, siz)
-            if bytes(dat.magic) != self.MAGIC:
+        dat.magic = (uint8_t * cls.SIZE_MAGIC)(*cls.MAGIC)
+        dat.charn = numc
+        dat.wordn = numw
+        for i in range(numc):
+            dat.chars[i] = chrs[i]
+        for i in range(numw):
+            dat.words[i] = word[i]
+        dat.length = sum(word)
+
+        ctx = bytes(dat) + bytes(cls.SIZE_SUPER - siz)
+        assert len(ctx) == cls.SIZE_SUPER
+        assert os.path.isdir(path)
+        assert not os.path.exists(file)
+        with open(file, "wb") as hdl:
+            if hdl.write(ctx) != cls.SIZE_SUPER:
                 return False
-            for i in range(num):
-                if dat.word[i] != self.__word[i]:
-                    return False
+        return True
+
+    @classmethod
+    def load(cls, path: str, readonly: bool = True) -> "nhdl":
+
+        file: str = cls.file(path)
+        assert os.path.isfile(file)
+
+        def read_head():
+
+            class head(Structure):
+
+                _fields_ = [
+                    ("magic", uint8_t * cls.SIZE_MAGIC),
+                    ("charn", uint8_t),
+                    ("wordn", uint8_t),
+                ]
+
+            dat: head = head()
+            siz: int = sizeof(head)
+
+            with open(file, "rb") as hdl:
+                ctx = hdl.read(siz)
+                ptr = (c_char * siz).from_buffer(bytearray(ctx))
+                memmove(addressof(dat), ptr, siz)
+                assert bytes(dat.magic) == cls.MAGIC
+                return dat
+
+        def read_superblock(numc: int, numw: int):
+
+            class superblock(Structure):
+
+                _fields_ = [
+                    ("magic", uint8_t * cls.SIZE_MAGIC),
+                    ("charn", uint8_t),
+                    ("wordn", uint8_t),
+                    ("chars", uint8_t * numc),
+                    ("words", uint8_t * numw),
+                    ("length", uint16_t),
+                ]
+
+            dat: superblock = superblock()
+            siz: int = sizeof(superblock)
+
+            with open(file, "rb") as hdl:
+                ctx = hdl.read(siz)
+                ptr = (c_char * siz).from_buffer(bytearray(ctx))
+                memmove(addressof(dat), ptr, siz)
+                assert bytes(dat.magic) == cls.MAGIC
+                assert dat.length == sum(dat.words)
+                assert dat.charn == numc
+                assert dat.wordn == numw
+                return dat
+
+        head = read_head()
+        sb = read_superblock(numc=head.charn, numw=head.wordn)
+        test: testakey = testakey(allowed_char={chr(c) for c in sb.chars})
+        word: Sequence[int] = tuple(w for w in sb.words)
+        return nhdl(path=path, word=word, test=test, readonly=readonly)
+
+    def __load(self) -> bool:
+        if self.endpos > self.SIZE_MAGIC:
+            assert self.endpos >= self.SIZE_SUPER
+            assert self.seek(self.SIZE_SUPER) == self.SIZE_SUPER
             # read all names
             while self.tell() < self.endpos:
                 name: str = self.read(self.length).decode()
                 assert self.read(self.SIZE_MAGIC) == self.MAGIC
                 self.__names[name] = self.get_path(name)
-        else:
-            # write head data
-            assert self.endpos == self.SIZE_MAGIC
-            for i in range(num):
-                dat.word[i] = self.__word[i]
-            dat.magic = (uint8_t * self.SIZE_MAGIC)(*self.MAGIC)
-            ctx = bytes(dat)
-            assert len(ctx) == siz
-            assert self.write(ctx) == siz
-
         return True
 
     def __dump(self, name: str) -> int:

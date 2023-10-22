@@ -438,14 +438,9 @@ class ctrie:
         assert isinstance(cacheidx, int)
         assert isinstance(cachemax, int)
         assert isinstance(readonly, bool)
-        if not os.path.exists(path):
-            os.makedirs(path)
-        assert os.path.isdir(path)
+        assert self.init(path=path, word=word, test=test)
         self.__path: str = path
-        self.__names: nhdl = nhdl(path=self.__path,
-                                  word=word,
-                                  test=test,
-                                  readonly=readonly)
+        self.__names: nhdl = nhdl.load(path=self.__path, readonly=readonly)
         nodes: int = self.__names.nodes
         cacheobj: int = nodes if nodes < self.MAX_NODES else min(
             max(int(nodes / 2), self.MIN_NODES), self.MAX_NODES)
@@ -529,3 +524,10 @@ class ctrie:
         if name not in self.__scache:
             self.__scache[name] = stor
         return stor
+
+    @classmethod
+    def init(cls, path: str, word: Sequence[int], test: testakey) -> bool:
+        file: str = nhdl.file(path)
+        if not os.path.exists(file):
+            assert nhdl.init(path=path, word=word, test=test)
+        return os.path.isfile(file)
