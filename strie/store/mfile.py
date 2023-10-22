@@ -48,7 +48,7 @@ class mhdl:
             assert handle.write(self.__magic) == self.__msize
         self.__handle: Optional[BinaryIO] = handle
         self.__endpos: int = handle.seek(0, 2)
-        assert self.check()
+        assert self.check(), f"{self.__path} check failed"
 
     def __del__(self):
         assert self.close()
