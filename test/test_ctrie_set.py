@@ -7,11 +7,11 @@ import os
 from generate import md5
 
 from strie import ctrie
-from strie import testhkey
+from strie import testhex
 
 root = ctrie(path=os.path.join(".", "data"),
              word=(1, 1),
-             test=testhkey,
+             test=testhex,
              cachemax=10**4,
              readonly=False)
 

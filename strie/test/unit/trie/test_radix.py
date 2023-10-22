@@ -7,7 +7,7 @@ from typing import Set
 import unittest
 
 from strie import radix
-from strie import testskey
+from strie import testalnum
 
 
 class test_radix(unittest.TestCase):
@@ -49,20 +49,20 @@ class test_radix(unittest.TestCase):
         pass
 
     def test_testskey(self):
-        self.assertFalse(testskey.check(""))
+        self.assertFalse(testalnum.check(""))
         for i in range(ord("0"), ord("9") + 1):
-            self.assertTrue(testskey.check(chr(i)))
+            self.assertTrue(testalnum.check(chr(i)))
         for i in range(ord("A"), ord("Z") + 1):
-            self.assertTrue(testskey.check(chr(i)))
+            self.assertTrue(testalnum.check(chr(i)))
         for i in range(ord("a"), ord("z") + 1):
-            self.assertTrue(testskey.check(chr(i)))
-        self.assertTrue(testskey.check("0bC3eF6hI"))
-        self.assertTrue(testskey.check("A1cD4fG7i"))
-        self.assertTrue(testskey.check("0123456789"))
-        self.assertTrue(testskey.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        self.assertTrue(testskey.check("abcdefghijklmnopqrstuvwxyz"))
-        self.assertTrue(testskey.check("testskey"))
-        self.assertFalse(testskey.check("test_key"))
+            self.assertTrue(testalnum.check(chr(i)))
+        self.assertTrue(testalnum.check("0bC3eF6hI"))
+        self.assertTrue(testalnum.check("A1cD4fG7i"))
+        self.assertTrue(testalnum.check("0123456789"))
+        self.assertTrue(testalnum.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+        self.assertTrue(testalnum.check("abcdefghijklmnopqrstuvwxyz"))
+        self.assertTrue(testalnum.check("testalnum"))
+        self.assertFalse(testalnum.check("test_key"))
 
     def test_hash_sequence(self):
         keys: List[str] = []
@@ -260,5 +260,5 @@ class test_radix(unittest.TestCase):
 
     def test_prefix(self):
         for i in range(256):
-            self.assertIsInstance(radix(prefix=f"{i:02x}", test=testskey),
+            self.assertIsInstance(radix(prefix=f"{i:02x}", test=testalnum),
                                   radix)

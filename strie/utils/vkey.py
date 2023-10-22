@@ -8,47 +8,42 @@ from typing import Set
 from typing import Union
 
 
-class testckey:
+class testakey:
     '''
-    check visual key
+    check printable ascii characters
     '''
 
     MAX_CHARACTERS: int = 65536
     """
-    hash keys allowed characters: 0-9, a-f
+    alpha-numeric keys allowed characters: 0-9, A-Z, a-z
     """
-    hkey: Set[str] = {
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d",
-        "e", "f"
-    }
-    """
-    string keys allowed characters: 0-9, A-Z, a-z
-
-    for i in range(ord("0"), ord("9") + 1):
-        print(f"'{chr(i)}',")
-
-    for i in range(ord("A"), ord("Z") + 1):
-        print(f"'{chr(i)}',")
-
-    for i in range(ord("a"), ord("z") + 1):
-        print(f"'{chr(i)}',")
-    """
-    skey: Set[str] = {
+    alnum: Set[str] = {
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D",
         "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R",
         "S", "T", "U", "V", "W", "X", "Y", "Z", "a", "b", "c", "d", "e", "f",
         "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
         "u", "v", "w", "x", "y", "z"
     }
+    """
+    hex keys allowed characters: 0-9, a-f
+    """
+    hex: Set[str] = {
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d",
+        "e", "f"
+    }
 
     def __init__(self,
                  length_limit: int = MAX_CHARACTERS,
-                 allowed_char: Union[Sequence[str], Set[str]] = skey,
+                 allowed_char: Union[Sequence[str], Set[str]] = alnum,
                  inspection: Optional[Callable[[str, int], bool]] = None):
         assert isinstance(length_limit, int) and length_limit > 0
         assert length_limit <= self.MAX_CHARACTERS
+        for c in allowed_char:
+            assert len(c) == 1
+            assert c.isascii()
+            assert c.isprintable()
         self.__lim: int = length_limit
-        self.__set: Set[str] = {c for c in allowed_char if len(c) == 1}
+        self.__set: Set[str] = {c for c in allowed_char}
         self.__chk: Optional[Callable[[str, int], bool]] = inspection
 
     @property
@@ -73,7 +68,7 @@ def checkvkey(key: str, len: int) -> bool:
     return True
 
 
-testvkey = testckey(allowed_char=testckey.hkey, inspection=checkvkey)
+testvkey = testakey(allowed_char=testakey.hex, inspection=checkvkey)
 
 
 def seqtokey(datas: Sequence[int], reverse: bool = False):

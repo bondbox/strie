@@ -8,7 +8,7 @@ import unittest
 
 from strie import htrie
 from strie import radix
-from strie import testhkey
+from strie import testhex
 
 
 class test_htrie(unittest.TestCase):
@@ -34,35 +34,20 @@ class test_htrie(unittest.TestCase):
         pass
 
     def test_testhkey(self):
-        self.assertTrue(testhkey.check(""))
+        self.assertFalse(testhex.check(""))
         for i in range(ord("0"), ord("9") + 1):
-            self.assertFalse(testhkey.check(chr(i)))
+            self.assertTrue(testhex.check(chr(i)))
         for i in range(ord("a"), ord("f") + 1):
-            self.assertFalse(testhkey.check(chr(i)))
+            self.assertTrue(testhex.check(chr(i)))
         for i in range(ord("A"), ord("F") + 1):
-            self.assertFalse(testhkey.check(chr(i)))
-        self.assertTrue(testhkey.check("0b2d4f"))
-        self.assertTrue(testhkey.check("a1c3e5"))
-        self.assertTrue(testhkey.check("0123456789abcdef"))
-        self.assertFalse(testhkey.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        self.assertFalse(testhkey.check("abcdefghijklmnopqrstuvwxyz"))
-        self.assertFalse(testhkey.check("testhkey"))
-        self.assertFalse(testhkey.check("test_key"))
-        self.assertFalse(testhkey.check(1))
-        self.assertFalse(testhkey.check(""))
-        for i in range(ord("0"), ord("9") + 1):
-            self.assertFalse(testhkey.check(chr(i)))
-        for i in range(ord("a"), ord("f") + 1):
-            self.assertFalse(testhkey.check(chr(i)))
-        for i in range(ord("A"), ord("F") + 1):
-            self.assertFalse(testhkey.check(chr(i)))
-        self.assertTrue(testhkey.check("0b2d4f"))
-        self.assertTrue(testhkey.check("a1c3e5"))
-        self.assertTrue(testhkey.check("0123456789abcdef"))
-        self.assertFalse(testhkey.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-        self.assertFalse(testhkey.check("abcdefghijklmnopqrstuvwxyz"))
-        self.assertFalse(testhkey.check("testhkey"))
-        self.assertFalse(testhkey.check("test_key"))
+            self.assertFalse(testhex.check(chr(i)))
+        self.assertTrue(testhex.check("0b2d4f"))
+        self.assertTrue(testhex.check("a1c3e5"))
+        self.assertTrue(testhex.check("0123456789abcdef"))
+        self.assertFalse(testhex.check("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+        self.assertFalse(testhex.check("abcdefghijklmnopqrstuvwxyz"))
+        self.assertFalse(testhex.check("testhex"))
+        self.assertFalse(testhex.check("test_key"))
 
     def test_root(self):
         self.assertEqual(len(self.root.leafs), 0)

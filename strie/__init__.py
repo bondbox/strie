@@ -6,5 +6,5 @@ from .utils import seqtokey
 from .trie import ctrie
 from .trie import htrie
 from .trie import radix
-from .trie import testhkey
-from .trie import testskey
+from .trie import testhex
+from .trie import testalnum

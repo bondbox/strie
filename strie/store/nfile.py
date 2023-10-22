@@ -14,7 +14,7 @@ from typing import Dict
 from typing import Sequence
 
 from ..utils import __prog__
-from ..utils import testckey
+from ..utils import testakey
 from .mfile import mhdl
 
 uint8_t = c_uint8
@@ -35,14 +35,14 @@ class nhdl(mhdl):
     def __init__(self,
                  path: str,
                  word: Sequence[int],
-                 test: testckey,
+                 test: testakey,
                  readonly: bool = True):
         assert isinstance(path, str)
         assert isinstance(word, Sequence)
-        assert isinstance(test, testckey)
+        assert isinstance(test, testakey)
         assert os.path.isdir(path)
         self.__path: str = path
-        self.__test: testckey = test
+        self.__test: testakey = test
         self.__word: Sequence[int] = tuple(int(i) for i in word)
         for i in self.__word:
             assert i > 0 and i < 256  # 1-255: 1 byte
@@ -57,7 +57,7 @@ class nhdl(mhdl):
         assert self.__load()
 
     @property
-    def test(self) -> testckey:
+    def test(self) -> testakey:
         return self.__test
 
     @property

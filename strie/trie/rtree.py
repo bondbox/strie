@@ -6,12 +6,12 @@ from typing import Optional
 from typing import Tuple
 from typing import TypeVar
 
-from ..utils import testckey
+from ..utils import testakey
 
 VT = TypeVar("VT")  # Value type.
 VTT = TypeVar("VTT")  # Value type.
 
-testskey = testckey(allowed_char=testckey.skey)
+testalnum = testakey(allowed_char=testakey.alnum)
 
 
 class radix(Dict[str, VT]):
@@ -77,11 +77,12 @@ class radix(Dict[str, VT]):
 
     def __init__(self,
                  prefix: str = "",
-                 test: testckey = testskey,
+                 test: testakey = testalnum,
                  root: Optional["radix"] = None):
-        assert isinstance(test, testckey)
+        assert isinstance(test, testakey)
         if prefix != "":
-            assert isinstance(test, testckey) and test.check(prefix)
+            assert isinstance(test, testakey)
+            assert test.check(prefix), f"Invalid '{prefix}', {test.characters}"
         length: int = len(prefix)
 
         assert (isinstance(root, radix) and length > 0) or root is None
@@ -90,7 +91,7 @@ class radix(Dict[str, VT]):
         self.__prefix: str = prefix
         self.__length: int = length
         self.__modify: bool = False
-        self.__test: testckey = test
+        self.__test: testakey = test
         self.__root: Optional[radix] = root
         self.__tack: bool = True if root is None else False
         self.__leafs: radix.store[VT] = radix.store(threshold=maximum)
@@ -104,7 +105,7 @@ class radix(Dict[str, VT]):
         return self.__fullname()
 
     @property
-    def test(self) -> testckey:
+    def test(self) -> testakey:
         return self.__test
 
     def nick(self, key: str) -> str:

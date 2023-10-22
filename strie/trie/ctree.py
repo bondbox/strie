@@ -18,9 +18,9 @@ from ..store import didx
 from ..store import ihdl
 from ..store import mhdl
 from ..store import nhdl
-from ..utils import testckey
+from ..utils import testakey
 from .rtree import radix
-from .rtree import testskey
+from .rtree import testalnum
 
 KT = TypeVar("KT")  # Key type.
 VT = TypeVar("VT")  # Value type.
@@ -79,7 +79,7 @@ class store(Dict[str, bytes]):
                  name: str,
                  ipath: str,
                  dpath: str,
-                 test: testckey,
+                 test: testakey,
                  readonly: bool = True,
                  icache: Optional[cache[str, radix[didx]]] = None):
         assert isinstance(name, str)
@@ -430,7 +430,7 @@ class ctrie:
     def __init__(self,
                  path: str = ".",
                  word: Sequence[int] = (2, ),
-                 test: testckey = testskey,
+                 test: testakey = testalnum,
                  cacheidx: int = 10**4,
                  cachemax: int = 10**6,
                  readonly: bool = True):

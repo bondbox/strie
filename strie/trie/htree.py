@@ -1,6 +1,6 @@
 # coding:utf-8
 
-from ..utils import testckey
+from ..utils import testakey
 from .rtree import radix
 
 
@@ -10,14 +10,14 @@ def checkhkey(key: str, len: int) -> bool:
     return True
 
 
-testhkey = testckey(allowed_char=testckey.hkey, inspection=checkhkey)
+testhex = testakey(allowed_char=testakey.hex, inspection=checkhkey)
 
 
 def htrie(prefix: str = "") -> radix:
     """
     Hash-based radix tree
     """
-    root = radix(prefix=prefix, test=testhkey)
+    root = radix(prefix=prefix, test=testhex)
     for i in range(256):
         root.pin(prefix=f"{i:02x}")
     return root

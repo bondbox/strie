@@ -7,5 +7,5 @@ __base__ = f".{__prog__}"
 URL_PROG = "https://github.com/bondbox/strie"
 
 from .vkey import seqtokey
-from .vkey import testckey
+from .vkey import testakey
 from .vkey import testvkey
