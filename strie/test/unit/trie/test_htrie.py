@@ -9,6 +9,14 @@ import unittest
 from strie import htrie
 from strie import radix
 from strie import testhex
+from strie.trie.htree import checkhkey
+
+
+class test_checkhkey(unittest.TestCase):
+
+    def test_checkhkey(self):
+        key: str = ""
+        self.assertFalse(checkhkey(key, len(key)))
 
 
 class test_htrie(unittest.TestCase):
