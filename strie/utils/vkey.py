@@ -15,6 +15,10 @@ class testakey:
 
     MAX_CHARACTERS: int = 65536
     """
+    numeric keys allowed characters: 0-9
+    """
+    num: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+    """
     alpha-numeric keys allowed characters: 0-9, A-Z, a-z
     """
     alnum: Set[str] = {
@@ -31,6 +35,18 @@ class testakey:
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d",
         "e", "f"
     }
+    """
+    IPV4 keys allowed characters: 0-9 and "."
+    """
+    ipv4: Set[str] = num.union({"."})
+    """
+    IPV6 keys allowed characters: 0-9, a-f and ":"
+    """
+    ipv6: Set[str] = hex.union({":"})
+    """
+    IP46 keys allowed characters: 0-9, a-f and ".", ":"
+    """
+    ip46: Set[str] = hex.union({".", ":"})
 
     def __init__(self,
                  length_limit: int = MAX_CHARACTERS,
