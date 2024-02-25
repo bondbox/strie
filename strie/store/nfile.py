@@ -89,7 +89,7 @@ class nhdl(mhdl):
         return self.test.check(key)
 
     def get_name(self, key: str) -> str:
-        assert self.__check(key)
+        assert self.__check(key), f"'{key}' illegal"
         return key[:self.length]
 
     def get_path(self, name: str) -> str:
