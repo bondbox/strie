@@ -290,7 +290,7 @@ class radix(Dict[str, VT]):
         while True:
             assert obj.__get_node(prefix) is None
 
-            newobj: radix[VT] = radix(prefix=prefix, root=obj)
+            newobj: radix[VT] = radix(prefix=prefix, test=self.test, root=obj)
             obj.__set_node(value=newobj, modify=modify)
 
             for i in range(radix.NODES + 1):
