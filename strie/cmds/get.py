@@ -10,12 +10,12 @@ from xarg import commands
 from xarg import run_command
 
 from ..trie import ctrie
-from ..utils import URL_PROG
 from ..utils import __prog_get__
+from ..utils import __url_home__
 from ..utils import __version__
+from .arg import add_decode
 from .arg import add_keys
 from .arg import add_path
-from .arg import add_decode
 
 
 @add_command("get")
@@ -45,4 +45,4 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     argv=argv,
                     prog=__prog_get__,
                     description="String trie command line.",
-                    epilog=f"For more, please visit {URL_PROG}.")
+                    epilog=f"For more, please visit {__url_home__}.")

@@ -8,14 +8,14 @@ from xarg import argp
 from xarg import commands
 from xarg import run_command
 
-from ..utils import URL_PROG
 from ..utils import __prog__
+from ..utils import __url_home__
 from ..utils import __version__
+from .get import add_cmd as add_cmd_get
 from .init import add_cmd as add_cmd_init
 from .list import add_cmd as add_cmd_list
-from .set import add_cmd as add_cmd_set
-from .get import add_cmd as add_cmd_get
 from .pop import add_cmd as add_cmd_del
+from .set import add_cmd as add_cmd_set
 
 
 @add_command(__prog__)
@@ -36,4 +36,4 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     argv=argv,
                     prog=__prog__,
                     description="String trie command line.",
-                    epilog=f"For more, please visit {URL_PROG}.")
+                    epilog=f"For more, please visit {__url_home__}.")
