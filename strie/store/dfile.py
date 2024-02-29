@@ -70,9 +70,12 @@ class didx:
     SIZE_DATA = sizeof(data)
 
     def __init__(self, offset: int, length: int, chksum: int = -1):
-        assert isinstance(offset, int) and offset >= dhdl.SIZE_MAGIC
-        assert isinstance(length, int) and length > 0
-        assert isinstance(chksum, int)
+        assert isinstance(offset, int), f"unexpected type: {type(offset)}"
+        assert isinstance(length, int), f"unexpected type: {type(offset)}"
+        assert isinstance(chksum, int), f"unexpected type: {type(chksum)}"
+        assert offset >= dhdl.SIZE_MAGIC, \
+            f"offset {offset} < {dhdl.SIZE_MAGIC}"
+        assert length > 0, f"length {length} error"
         self.__data = self.data()
         self.__data.offset = offset
         self.__data.length = length
@@ -113,7 +116,7 @@ class didx:
 
     @classmethod
     def load(cls, value: bytes) -> "didx":
-        assert len(value) == cls.SIZE_DATA
+        assert len(value) == cls.SIZE_DATA, f"{value} != {cls.SIZE_DATA}"
         dat = cls.data()
         ptr = (c_char * cls.SIZE_DATA).from_buffer(bytearray(value))
         memmove(addressof(dat), ptr, cls.SIZE_DATA)

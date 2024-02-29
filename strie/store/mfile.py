@@ -133,22 +133,23 @@ class mhdl:
         return self.__handle.seek(offset, whence)
 
     def read(self, length: int) -> bytes:
-        assert self.__handle is not None
-        assert isinstance(length, int) and length > 0
+        assert self.__handle is not None, f"Invalid file {self.path} handle"
+        assert isinstance(length, int) and length > 0, \
+            f"read {self.path} length {length} error"
         value: bytes = self.__handle.read(length)
-        assert isinstance(value, bytes)
-        assert len(value) == length
+        assert isinstance(value, bytes), f"unexpected type: {type(value)}"
+        assert len(value) == length, f"read {self.path} length {length} error"
         return value
 
     def write(self, value: bytes) -> int:
         assert isinstance(value, bytes)
-        assert self.__handle is not None, "Invalid file handle"
+        assert self.__handle is not None, f"Invalid file {self.path} handle"
         assert self.__readonly is False, f"Write read-only file {self.path}"
         offset: int = self.endpos
         length: int = len(value)
-        assert length > 0
-        assert self.__handle.seek(0, 2) == offset, f"{self.path}:"\
-            f"{offset} != {self.__handle.tell()}, length:{length}"
+        assert length > 0, f"write {self.path} length {length} error"
+        assert self.__handle.seek(0, 2) == offset, f"{self.path} "\
+            f"{offset} != {self.__handle.tell()}, length {length}"
 
         try:
             return self.__handle.write(value)

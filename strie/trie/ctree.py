@@ -149,7 +149,7 @@ class store(Dict[str, bytes]):
             key = prefix + k
             assert isinstance(key, str)
             if v is None:
-                assert key in self.index
+                assert key in self.index, f"key '{key}' not exist"
                 del self.index[key]
                 continue
             assert isinstance(v, didx)
