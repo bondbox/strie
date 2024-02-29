@@ -115,12 +115,13 @@ class didx:
         return bytes(self.__data)
 
     @classmethod
-    def load(cls, value: bytes) -> "didx":
+    def load(cls, value: bytes) -> Optional["didx"]:
         assert len(value) == cls.SIZE_DATA, f"{value} != {cls.SIZE_DATA}"
         dat = cls.data()
         ptr = (c_char * cls.SIZE_DATA).from_buffer(bytearray(value))
         memmove(addressof(dat), ptr, cls.SIZE_DATA)
-        return didx(offset=dat.offset, length=dat.length, chksum=dat.chksum)
+        return None if dat.offset == 0 and dat.length == 0 and dat.chksum == 0\
+            else didx(offset=dat.offset, length=dat.length, chksum=dat.chksum)
 
     @classmethod
     def new(cls, offset: int, value: bytes) -> "didx":
@@ -150,19 +151,22 @@ class ihdl(mhdl):
         assert self.check()
         return self
 
-    def __next__(self) -> Tuple[str, Optional[didx]]:
+    def __next__(self) -> Tuple[Optional[str], Optional[didx]]:
         if self.tell() < self.endpos:
             return self.__load()
         raise StopIteration
 
-    def __load(self) -> Tuple[str, Optional[didx]]:
+    def __load(self) -> Tuple[Optional[str], Optional[didx]]:
         assert self.tell() < self.endpos
         res = self.head()
         ctx = self.read(self.SIZE_HEAD)
         ptr = (c_char * self.SIZE_HEAD).from_buffer(bytearray(ctx))
         memmove(addressof(res), ptr, self.SIZE_HEAD)
         length: int = res.keylen
-        key: str = self.read(length).decode() if length >= 0 else ""
+        if length <= 0:
+            return None, None
+        assert length > 0, f"length {length} error"
+        key: str = self.read(length).decode()
         if res.delkey:
             return key, None
         idx = didx.load(self.read(didx.SIZE_DATA))

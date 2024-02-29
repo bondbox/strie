@@ -145,6 +145,8 @@ class store(Dict[str, bytes]):
     def __load_index(self) -> bool:
         prefix: str = self.index.prefix
         for k, v in self.__ihdl:
+            if k is None:
+                continue
             self.__count += 1
             key = prefix + k
             assert isinstance(key, str)
