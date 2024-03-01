@@ -66,8 +66,7 @@ class cache(Generic[KT, VT]):
 
 
 class store(Dict[str, bytes]):
-    """
-    Store radix trees
+    """Store radix trees
     """
 
     IDX_GC_MIN_DEL = 100  # indexs
@@ -422,8 +421,7 @@ class store(Dict[str, bytes]):
 
 
 class ctrie:
-    """
-    Caching and persisting radix trees
+    """Caching and persisting radix trees
     """
 
     MAX_NODES = int(10**3 / 2)  # TODO: OSError: [Errno 24] Too many open files

@@ -22,9 +22,8 @@ uint64_t = c_uint64
 
 
 class dhdl(mhdl):
-    '''
-    Datas file handle
-    '''
+    """Datas file handle
+    """
 
     MAGIC = b"\x3a\x2c\xc5\xe2\x68\x5c\x12\xa3"
     SIZE_MAGIC = len(MAGIC)
@@ -55,9 +54,8 @@ class dhdl(mhdl):
 
 
 class didx:
-    '''
-    Datas index
-    '''
+    """Datas index
+    """
 
     class data(Structure):
 
@@ -129,9 +127,8 @@ class didx:
 
 
 class ihdl(mhdl):
-    '''
-    Datas index file handle
-    '''
+    """Datas index file handle
+    """
 
     class head(Structure):
         _fields_ = [

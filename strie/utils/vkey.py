@@ -9,17 +9,14 @@ from typing import Union
 
 
 class testakey:
-    '''
-    check printable ascii characters
-    '''
+    """check printable ascii characters
+    """
 
     MAX_CHARACTERS: int = 65536
-    """
-    numeric keys allowed characters: 0-9
+    """numeric keys allowed characters: 0-9
     """
     num: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
-    """
-    alpha-numeric keys allowed characters: 0-9, A-Z, a-z
+    """alpha-numeric keys allowed characters: 0-9, A-Z, a-z
     """
     alnum: Set[str] = {
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D",
@@ -28,23 +25,19 @@ class testakey:
         "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
         "u", "v", "w", "x", "y", "z"
     }
-    """
-    hex keys allowed characters: 0-9, a-f
+    """hex keys allowed characters: 0-9, a-f
     """
     hex: Set[str] = {
         "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d",
         "e", "f"
     }
-    """
-    IPV4 keys allowed characters: 0-9 and "."
+    """IPV4 keys allowed characters: 0-9 and "."
     """
     ipv4: Set[str] = num.union({"."})
-    """
-    IPV6 keys allowed characters: 0-9, a-f and ":"
+    """IPV6 keys allowed characters: 0-9, a-f and ":"
     """
     ipv6: Set[str] = hex.union({":"})
-    """
-    IP46 keys allowed characters: 0-9, a-f and ".", ":"
+    """IP46 keys allowed characters: 0-9, a-f and ".", ":"
     """
     ip46: Set[str] = hex.union({".", ":"})
 

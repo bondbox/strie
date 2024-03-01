@@ -15,8 +15,7 @@ testalnum = testakey(allowed_char=testakey.alnum)
 
 
 class radix(Dict[str, VT]):
-    """
-    Radix tree
+    """Radix tree
     """
 
     LEAFS = 128
@@ -225,9 +224,8 @@ class radix(Dict[str, VT]):
         return v
 
     def __iter_init(self):
-        '''
-        DFS(Depth First Search) initialization
-        '''
+        """DFS(Depth First Search) initialization
+        """
         assert isinstance(self.__iter_keys, List)
         assert isinstance(self.__iter_objs, List)
 
@@ -247,9 +245,8 @@ class radix(Dict[str, VT]):
         return self
 
     def __iter_walk(self) -> str:
-        '''
-        DFS(Depth First Search) iteration
-        '''
+        """DFS(Depth First Search) iteration
+        """
 
         while True:
             if len(self.__iter_keys) > 0:
@@ -264,9 +261,8 @@ class radix(Dict[str, VT]):
             raise StopIteration
 
     def __split_node(self, key: str, modify: bool = True):
-        '''
-        split new node
-        '''
+        """split new node
+        """
         prefix = key[0]
         obj: radix[VT] = self
 

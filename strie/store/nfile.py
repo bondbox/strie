@@ -25,9 +25,8 @@ uint64_t = c_uint64
 
 
 class nhdl(mhdl):
-    '''
-    Names file handle
-    '''
+    """Names file handle
+    """
 
     MAGIC = b"\x3a\x33\xc5\xf9\x8b\x5c\x73\xa3"
     SIZE_MAGIC = len(MAGIC)

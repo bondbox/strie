@@ -20,9 +20,8 @@ def md5sum(file: str) -> str:
 
 
 class mhdl:
-    '''
-    Magic-based file handle
-    '''
+    """Magic-based file handle
+    """
 
     def __init__(self, path: str, magic: bytes, readonly: bool = True):
         assert isinstance(path, str)
@@ -157,9 +156,8 @@ class mhdl:
             self.__endpos = self.__handle.seek(0, 2)
 
     def rename(self, path: str, reopen: bool = True) -> bool:
-        '''
-        Rename and reopen
-        '''
+        """Rename and reopen
+        """
         assert isinstance(path, str)
         assert isinstance(reopen, bool)
         if self.path == path:
@@ -173,9 +171,8 @@ class mhdl:
         return True if not reopen else self.reopen(path)
 
     def backup(self) -> bool:
-        '''
-        Close and backup
-        '''
+        """Close and backup
+        """
         return self.rename(self.bakpath, False)
 
     @classmethod

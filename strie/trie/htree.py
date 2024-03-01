@@ -14,8 +14,7 @@ testhex = testakey(allowed_char=testakey.hex, inspection=checkhkey)
 
 
 def htrie(prefix: str = "") -> radix:
-    """
-    Hash-based radix tree
+    """Hash-based radix tree
     """
     root = radix(prefix=prefix, test=testhex)
     for i in range(256):
