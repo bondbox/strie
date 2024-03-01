@@ -34,7 +34,7 @@ def run_cmd(cmds: commands) -> int:
             cmds.stdout(f"Deleted {key}.")
         else:
             cmds.stderr(f"Non-existent {key}.")
-        assert key not in root
+        assert key not in root, f"pop key '{key}' error"
     return 0
 
 

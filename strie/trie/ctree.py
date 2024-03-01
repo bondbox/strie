@@ -31,7 +31,7 @@ class cache(Generic[KT, VT]):
     MINIMUM = 100
 
     def __init__(self, cachemax: int):
-        assert isinstance(cachemax, int)
+        assert isinstance(cachemax, int), f"unexpected type: {type(cachemax)}"
         assert cachemax >= self.MINIMUM, f"{cachemax} less than {self.MINIMUM}"
         nlru: int = int(cachemax * 40 / 100)
         self.__clru: LRUCache[KT, VT] = LRUCache(maxsize=nlru)
@@ -61,8 +61,8 @@ class cache(Generic[KT, VT]):
             del self.__clfu[key]
         if key in self.__clru:
             del self.__clru[key]
-        assert key not in self.__clfu
-        assert key not in self.__clru
+        assert key not in self.__clfu, f"delete key '{key}',error"
+        assert key not in self.__clru, f"delete key '{key}',error"
 
 
 class store(Dict[str, bytes]):
@@ -81,9 +81,10 @@ class store(Dict[str, bytes]):
                  test: testakey,
                  readonly: bool = True,
                  icache: Optional[cache[str, radix[didx]]] = None):
-        assert isinstance(name, str)
-        assert isinstance(icache, cache) or icache is None
-        assert isinstance(readonly, bool)
+        assert isinstance(name, str), f"unexpected type: {type(name)}"
+        assert isinstance(readonly, bool), f"unexpected type: {type(readonly)}"
+        assert isinstance(icache, cache) or icache is None, \
+            f"unexpected type: {type(icache)}"
         assert self.restore(ipath, dpath)
         if icache is not None and name in icache:
             index: radix[didx] = icache[name]
@@ -93,8 +94,8 @@ class store(Dict[str, bytes]):
                 assert name not in icache
             index: radix[didx] = radix(prefix=name, test=test)
             reload: bool = True
-        assert isinstance(reload, bool)
-        assert isinstance(index, radix)
+        assert isinstance(reload, bool), f"unexpected type: {type(reload)}"
+        assert isinstance(index, radix), f"unexpected type: {type(index)}"
         assert index.prefix == name
         assert index.test is test
         self.__name: str = name
@@ -148,12 +149,12 @@ class store(Dict[str, bytes]):
                 continue
             self.__count += 1
             key = prefix + k
-            assert isinstance(key, str)
+            assert isinstance(key, str), f"unexpected type: {type(key)}"
             if v is None:
                 assert key in self.index, f"key '{key}' not exist"
                 del self.index[key]
                 continue
-            assert isinstance(v, didx)
+            assert isinstance(v, didx), f"unexpected type: {type(v)}"
             self.index[key] = v
         if not self.readonly:
             # gc after load index
@@ -162,8 +163,8 @@ class store(Dict[str, bytes]):
 
     def __dump_index(self, key: str, delete: bool = False) -> bool:
         assert not self.readonly, "Read-only object"
-        assert isinstance(key, str)
-        assert isinstance(delete, bool)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
+        assert isinstance(delete, bool), f"unexpected type: {type(delete)}"
         self.__count += 1
         if delete is True:
             # delete key
@@ -221,7 +222,8 @@ class store(Dict[str, bytes]):
                                         icache=None)
                     for key in self:
                         datas: bytes = self.get(key)
-                        assert isinstance(datas, bytes)
+                        assert isinstance(datas, bytes), \
+                            f"unexpected type: {type(datas)}"
                         assert stor.put(key, datas)
                     # backup and update
                     assert self.__ihdl.backup(), \
@@ -249,7 +251,8 @@ class store(Dict[str, bytes]):
                                       readonly=False)
                     for key in self.index:
                         index: didx = self.index[key]
-                        assert isinstance(index, didx)
+                        assert isinstance(index, didx), \
+                            f"unexpected type: {type(index)}"
                         assert hidx.dump(self.index.nick(key), index)
                     # backup and update
                     assert self.__ihdl.backup(), \
@@ -274,14 +277,14 @@ class store(Dict[str, bytes]):
         dbak: str = mhdl.get_bakpath(dpath)
 
         def safe_remove_file(path: str) -> bool:
-            assert isinstance(path, str)
+            assert isinstance(path, str), f"unexpected type: {type(path)}"
             if os.path.isfile(path):
                 os.remove(path)
             return not os.path.exists(path)
 
         def safe_rename_file(src: str, dst: str) -> bool:
-            assert isinstance(src, str)
-            assert isinstance(dst, str)
+            assert isinstance(src, str), f"unexpected type: {type(src)}"
+            assert isinstance(dst, str), f"unexpected type: {type(dst)}"
             assert src != dst
             assert os.path.isfile(src), f"{src}"
             assert not os.path.exists(dst), f"{dst}"
@@ -341,17 +344,17 @@ class store(Dict[str, bytes]):
         indexs: Set[str] = set()
 
         for k, v in bak:
-            assert isinstance(k, str)
+            assert isinstance(k, str), f"unexpected type: {type(k)}"
             if v is not None:
-                assert isinstance(v, didx)
+                assert isinstance(v, didx), f"unexpected type: {type(v)}"
                 indexs.add(k)
             else:
                 assert k in indexs
                 indexs.remove(k)
         try:
             for k, v in src:
-                assert isinstance(k, str)
-                assert isinstance(v, didx)
+                assert isinstance(k, str), f"unexpected type: {type(k)}"
+                assert isinstance(v, didx), f"unexpected type: {type(v)}"
                 assert k in indexs
                 indexs.remove(k)
         except Exception:
@@ -373,12 +376,12 @@ class store(Dict[str, bytes]):
         indexs: Dict[str, didx] = {}
 
         for k, v in idx:
-            assert isinstance(k, str)
+            assert isinstance(k, str), f"unexpected type: {type(k)}"
             if v is None:
                 assert k in indexs
                 del indexs[k]
                 continue
-            assert isinstance(v, didx)
+            assert isinstance(v, didx), f"unexpected type: {type(v)}"
             try:
                 if not v.verify(dat.load(offset=v.offset, length=v.length)):
                     ret = False
@@ -394,18 +397,18 @@ class store(Dict[str, bytes]):
 
     def put(self, key: str, value: bytes) -> bool:
         assert not self.readonly, "Read-only object"
-        assert isinstance(key, str)
-        assert isinstance(value, bytes)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
+        assert isinstance(value, bytes), f"unexpected type: {type(value)}"
         info: didx = didx.new(offset=self.__dhdl.dump(value), value=value)
         self.__dhdl.sync()
-        assert isinstance(info, didx)
+        assert isinstance(info, didx), f"unexpected type: {type(info)}"
         self.index[key] = info
         return self.__dump_index(key)
 
     def get(self, key: str) -> bytes:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         inf: didx = self.index[key]
-        assert isinstance(inf, didx)
+        assert isinstance(inf, didx), f"unexpected type: {type(inf)}"
         off: int = inf.offset
         len: int = inf.length
         dat = self.__dhdl.load(offset=off, length=len)
@@ -434,10 +437,10 @@ class ctrie:
                  cacheidx: int = 10**4,
                  cachemax: int = 10**6,
                  readonly: bool = True):
-        assert isinstance(path, str)
-        assert isinstance(cacheidx, int)
-        assert isinstance(cachemax, int)
-        assert isinstance(readonly, bool)
+        assert isinstance(path, str), f"unexpected type: {type(path)}"
+        assert isinstance(cacheidx, int), f"unexpected type: {type(cacheidx)}"
+        assert isinstance(cachemax, int), f"unexpected type: {type(cachemax)}"
+        assert isinstance(readonly, bool), f"unexpected type: {type(readonly)}"
         assert self.init(path=path, word=word, test=test)
         self.__path: str = path
         self.__names: nhdl = nhdl.load(path=self.__path, readonly=readonly)
@@ -470,16 +473,16 @@ class ctrie:
         raise StopIteration
 
     def __contains__(self, key: str) -> bool:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         return key in self.__route(key)
 
     def __setitem__(self, key: str, value: bytes):
-        assert isinstance(key, str)
-        assert isinstance(value, bytes)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
+        assert isinstance(value, bytes), f"unexpected type: {type(value)}"
 
         if key in self.__dcache:
             cache: bytes = self.__dcache[key]
-            assert isinstance(cache, bytes)
+            assert isinstance(cache, bytes), f"unexpected type: {type(cache)}"
             if cache == value:
                 return
 
@@ -492,15 +495,15 @@ class ctrie:
             raise e
 
     def __getitem__(self, key: str) -> bytes:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         if key not in self.__dcache:
             self.__dcache[key] = self.__route(key).get(key=key)
         value: bytes = self.__dcache[key]
-        assert isinstance(value, bytes)
+        assert isinstance(value, bytes), f"unexpected type: {type(value)}"
         return value
 
     def __delitem__(self, key: str):
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         if key in self.__dcache:
             del self.__dcache[key]
         assert self.__route(key).pop(key=key)
@@ -520,7 +523,7 @@ class ctrie:
         name: str = self.__names.get_name(key)
         stor: store = self.__scache[
             name] if name in self.__scache else self.__get_store(name)
-        assert isinstance(stor, store)
+        assert isinstance(stor, store), f"unexpected type: {type(stor)}"
         if name not in self.__scache:
             self.__scache[name] = stor
         return stor

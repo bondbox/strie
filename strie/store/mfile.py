@@ -8,7 +8,7 @@ from typing import Optional
 
 
 def md5sum(file: str) -> str:
-    assert isinstance(file, str)
+    assert isinstance(file, str), f"unexpected type: {type(file)}"
     with open(file, "rb") as fhdl:
         md5_hash = hashlib.md5()
         while True:
@@ -24,11 +24,11 @@ class mhdl:
     """
 
     def __init__(self, path: str, magic: bytes, readonly: bool = True):
-        assert isinstance(path, str)
-        assert isinstance(magic, bytes)
-        assert isinstance(readonly, bool)
+        assert isinstance(path, str), f"unexpected type: {type(path)}"
+        assert isinstance(magic, bytes), f"unexpected type: {type(magic)}"
+        assert isinstance(readonly, bool), f"unexpected type: {type(readonly)}"
         msize: int = len(magic)
-        assert msize > 0
+        assert msize > 0, f"size {msize} error"
 
         def open_check(readonly: bool) -> bool:
             if not readonly:
@@ -50,7 +50,7 @@ class mhdl:
         assert self.check(), f"{self.__path} check failed"
 
     def __del__(self):
-        assert self.close()
+        assert self.close(), f"close '{self.path}' error"
 
     def sync(self):
         if self.__handle is not None and not self.readonly:
@@ -68,7 +68,7 @@ class mhdl:
     def reopen(self, path: Optional[str] = None) -> bool:
         if path is None:
             path = self.path
-        assert isinstance(path, str)
+        assert isinstance(path, str), f"unexpected type: {type(path)}"
         # Not create new file
         if not os.path.isfile(path):
             return False
@@ -76,8 +76,9 @@ class mhdl:
         if self.path != path:
             self.close()
         if self.__handle is None:
-            assert os.path.isfile(path)
-            assert not os.path.exists(self.bakpath)
+            assert os.path.isfile(path), f"'{path}' is not a regular file"
+            assert not os.path.exists(self.bakpath), \
+                f"backup file '{self.bakpath}' still exists"
             handle: BinaryIO = open(path, "rb" if self.readonly else "ab+")
             if handle is None:
                 return False
@@ -85,7 +86,7 @@ class mhdl:
             self.__endpos = handle.seek(0, 2)
             assert self.check()
         # Success and modify path
-        assert self.__handle is not None
+        assert self.__handle is not None, f"Invalid file {self.path} handle"
         self.__path = path
         return True
 
@@ -112,7 +113,7 @@ class mhdl:
 
     @property
     def endpos(self) -> int:
-        assert self.__handle is not None
+        assert self.__handle is not None, f"Invalid file {self.path} handle"
         return self.__endpos
 
     @property
@@ -124,24 +125,24 @@ class mhdl:
         return self.__magic
 
     def tell(self) -> int:
-        assert self.__handle is not None
+        assert self.__handle is not None, f"Invalid file {self.path} handle"
         return self.__handle.tell()
 
     def seek(self, offset: int, whence: int = 0) -> int:
-        assert self.__handle is not None
+        assert self.__handle is not None, f"Invalid file {self.path} handle"
         return self.__handle.seek(offset, whence)
 
     def read(self, length: int) -> bytes:
         assert self.__handle is not None, f"Invalid file {self.path} handle"
-        assert isinstance(length, int) and length > 0, \
-            f"read {self.path} length {length} error"
+        assert isinstance(length, int), f"unexpected type: {type(length)}"
+        assert length > 0, f"read {self.path} length {length} error"
         value: bytes = self.__handle.read(length)
         assert isinstance(value, bytes), f"unexpected type: {type(value)}"
         assert len(value) == length, f"read {self.path} length {length} error"
         return value
 
     def write(self, value: bytes) -> int:
-        assert isinstance(value, bytes)
+        assert isinstance(value, bytes), f"unexpected type: {type(value)}"
         assert self.__handle is not None, f"Invalid file {self.path} handle"
         assert self.__readonly is False, f"Write read-only file {self.path}"
         offset: int = self.endpos
@@ -158,8 +159,8 @@ class mhdl:
     def rename(self, path: str, reopen: bool = True) -> bool:
         """Rename and reopen
         """
-        assert isinstance(path, str)
-        assert isinstance(reopen, bool)
+        assert isinstance(path, str), f"unexpected type: {type(path)}"
+        assert isinstance(reopen, bool), f"unexpected type: {type(reopen)}"
         if self.path == path:
             return True
         assert not os.path.exists(path), f"{path} already exists"
@@ -177,5 +178,5 @@ class mhdl:
 
     @classmethod
     def get_bakpath(cls, path: str) -> str:
-        assert isinstance(path, str)
+        assert isinstance(path, str), f"unexpected type: {type(path)}"
         return f"{path}.bak"

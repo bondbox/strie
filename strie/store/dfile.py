@@ -34,22 +34,23 @@ class dhdl(mhdl):
     @property
     def dsize(self) -> int:
         dsize: int = self.endpos - self.msize
-        assert dsize >= 0
+        assert dsize >= 0, f"size {dsize} error"
         return dsize
 
     def load(self, offset: int, length: int) -> bytes:
-        assert isinstance(offset, int)
-        assert isinstance(length, int)
-        assert offset >= self.SIZE_MAGIC
-        assert length > 0
-        assert offset + length <= self.endpos
-        assert self.seek(offset) == offset
-        assert self.tell() == offset
+        assert isinstance(offset, int), f"unexpected type: {type(offset)}"
+        assert isinstance(length, int), f"unexpected type: {type(length)}"
+        assert offset >= self.SIZE_MAGIC, f"{offset} < {self.SIZE_MAGIC}"
+        assert length > 0, f"length {length} error"
+        assert offset + length <= self.endpos, \
+            f"{offset} + {length} > {self.endpos}"
+        assert self.seek(offset) == offset, f"seek {offset} error"
+        assert self.tell() == offset, f"{self.tell()} != {offset}"
         return self.read(length)
 
     def dump(self, value: bytes) -> int:
         length: int = len(value)
-        assert self.write(value) == length
+        assert self.write(value) == length, f"'{self.path}' write error"
         return self.endpos - length
 
 
@@ -69,7 +70,7 @@ class didx:
 
     def __init__(self, offset: int, length: int, chksum: int = -1):
         assert isinstance(offset, int), f"unexpected type: {type(offset)}"
-        assert isinstance(length, int), f"unexpected type: {type(offset)}"
+        assert isinstance(length, int), f"unexpected type: {type(length)}"
         assert isinstance(chksum, int), f"unexpected type: {type(chksum)}"
         assert offset >= dhdl.SIZE_MAGIC, \
             f"offset {offset} < {dhdl.SIZE_MAGIC}"
@@ -93,7 +94,7 @@ class didx:
 
     @classmethod
     def calc(cls, value: bytes) -> int:
-        assert isinstance(value, bytes)
+        assert isinstance(value, bytes), f"unexpected type: {type(value)}"
         return binascii.crc32(value)
 
     def check(self) -> bool:
@@ -170,8 +171,9 @@ class ihdl(mhdl):
         return key, idx
 
     def dump(self, key: str, value: Optional[didx]) -> bool:
-        assert isinstance(key, str)
-        assert isinstance(value, didx) or value is None
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
+        assert isinstance(value, didx) or value is None, \
+            f"unexpected type: {type(value)}"
         delete: bool = True if value is None else False
         res: ihdl.head = self.head()
         res.keylen = len(key)
@@ -180,7 +182,7 @@ class ihdl(mhdl):
         ctx: bytes = bytes(res) + dat
         num: int = self.SIZE_HEAD + len(dat)
         if not delete:
-            assert isinstance(value, didx)
+            assert isinstance(value, didx), f"unexpected type: {type(value)}"
             ctx += value.dump()
             num += didx.SIZE_DATA
         assert len(ctx) == num

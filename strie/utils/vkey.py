@@ -45,8 +45,10 @@ class testakey:
                  length_limit: int = MAX_CHARACTERS,
                  allowed_char: Union[Sequence[str], Set[str]] = alnum,
                  inspection: Optional[Callable[[str, int], bool]] = None):
-        assert isinstance(length_limit, int) and length_limit > 0
-        assert length_limit <= self.MAX_CHARACTERS
+        assert isinstance(length_limit, int), \
+            f"unexpected type: {type(length_limit)}"
+        assert length_limit > 0 and length_limit <= self.MAX_CHARACTERS, \
+            f"{length_limit} not in (0, {self.MAX_CHARACTERS}]"
         for c in allowed_char:
             assert len(c) == 1
             assert c.isascii()
@@ -81,15 +83,15 @@ testvkey = testakey(allowed_char=testakey.hex, inspection=checkvkey)
 
 
 def seqtokey(datas: Sequence[int], reverse: bool = False):
-    assert isinstance(datas, Sequence)
-    assert isinstance(reverse, bool)
+    assert isinstance(datas, Sequence), f"unexpected type: {type(datas)}"
+    assert isinstance(reverse, bool), f"unexpected type: {type(reverse)}"
     res: List[str] = []
     for i in datas:
-        assert isinstance(i, int)
-        assert i >= 0 and i <= 255
+        assert isinstance(i, int), f"unexpected type: {type(i)}"
+        assert i >= 0 and i <= 255, f"{i} not in [0, 255]"
         res.append(f"{i:02x}")
     if reverse:
         res.reverse()
     key = "".join(res).lower()
-    assert testvkey.check(key)
+    assert testvkey.check(key), f"check key '{key}' error"
     return key

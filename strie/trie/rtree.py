@@ -24,7 +24,9 @@ class radix(Dict[str, VT]):
     class store(Dict[str, VTT]):
 
         def __init__(self, threshold: int):
-            assert isinstance(threshold, int) and threshold > 0
+            assert isinstance(threshold, int), \
+                f"unexpected type: {type(threshold)}"
+            assert threshold > 0, f"threshold {threshold} error"
             self.__upper: int = min(threshold, radix.LEAFS)
             self.__lower: int = int(threshold / 2)
             self.__stats: List[int] = [0] * radix.NODES
@@ -78,9 +80,9 @@ class radix(Dict[str, VT]):
                  prefix: str = "",
                  test: testakey = testalnum,
                  root: Optional["radix"] = None):
-        assert isinstance(test, testakey)
+        assert isinstance(test, testakey), f"unexpected type: {type(test)}"
         if prefix != "":
-            assert isinstance(test, testakey)
+            assert isinstance(test, testakey), f"unexpected type: {type(test)}"
             assert test.check(prefix), f"Invalid '{prefix}', {test.characters}"
         length: int = len(prefix)
 
@@ -116,7 +118,7 @@ class radix(Dict[str, VT]):
 
     @prefix.setter
     def prefix(self, value: str):
-        assert isinstance(value, str)
+        assert isinstance(value, str), f"unexpected type: {type(value)}"
         length = len(value)
         assert length > 0
         self.__prefix = value
@@ -145,7 +147,7 @@ class radix(Dict[str, VT]):
         return "".join(keys)
 
     def __nickname(self, key: str) -> str:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         assert len(key) >= self.__length
         assert key[:self.__length] == self.prefix
         return key[self.__length:]
@@ -163,7 +165,7 @@ class radix(Dict[str, VT]):
         return self.__iter_walk()
 
     def __contains__(self, key: str) -> bool:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         obj: radix[VT] = self
         while True:
             assert obj.__check(key)
@@ -193,7 +195,8 @@ class radix(Dict[str, VT]):
         return True
 
     def __inc(self, v: int = 1) -> int:
-        assert isinstance(v, int) and v > 0
+        assert isinstance(v, int), f"unexpected type: {type(v)}"
+        assert v > 0, f"inc {v} error"
         curr: Optional[radix] = self
         while curr is not None:
             curr.__count += v
@@ -201,7 +204,8 @@ class radix(Dict[str, VT]):
         return v
 
     def __dec(self, v: int = 1) -> int:
-        assert isinstance(v, int) and v > 0
+        assert isinstance(v, int), f"unexpected type: {type(v)}"
+        assert v > 0, f"dec {v} error"
         curr: Optional[radix] = self
         prev = None
         while curr is not None:
@@ -226,8 +230,10 @@ class radix(Dict[str, VT]):
     def __iter_init(self):
         """DFS(Depth First Search) initialization
         """
-        assert isinstance(self.__iter_keys, List)
-        assert isinstance(self.__iter_objs, List)
+        assert isinstance(self.__iter_keys, List), \
+            f"unexpected type: {type(self.__iter_keys)}"
+        assert isinstance(self.__iter_objs, List), \
+            f"unexpected type: {type(self.__iter_objs)}"
 
         prev = [self]
         self.__iter_keys.clear()
@@ -299,9 +305,10 @@ class radix(Dict[str, VT]):
                     break
 
     def __set_node(self, value: "radix", modify: bool = True) -> bool:
-        assert isinstance(value, radix) and len(value.prefix) > 0
+        assert isinstance(value, radix), f"unexpected type: {type(value)}"
+        assert len(value.prefix) > 0, f"prefix '{value.prefix}' error"
         assert value.prefix not in self.__nodes
-        assert isinstance(modify, bool)
+        assert isinstance(modify, bool), f"unexpected type: {type(modify)}"
         # check root node
         if value.__root is not self:
             value.__root = self
@@ -328,7 +335,7 @@ class radix(Dict[str, VT]):
         return True
 
     def __get_node(self, prefix: str) -> Optional["radix"]:
-        assert isinstance(prefix, str)
+        assert isinstance(prefix, str), f"unexpected type: {type(prefix)}"
         head = 1
         tail = len(prefix)
         while tail >= head:
@@ -341,13 +348,15 @@ class radix(Dict[str, VT]):
         return None
 
     def __del_node(self, prefix: str) -> bool:
-        assert isinstance(prefix, str) and len(prefix) > 0
+        assert isinstance(prefix, str), f"unexpected type: {type(prefix)}"
+        assert len(prefix) > 0, f"prefix length {len(prefix)} error"
         assert prefix in self.__nodes and self.__nodes[prefix].__tack is False
         del self.__nodes[prefix]
         return True
 
     def pin(self, prefix: str) -> bool:
-        assert isinstance(prefix, str) and len(prefix) > 0
+        assert isinstance(prefix, str), f"unexpected type: {type(prefix)}"
+        assert len(prefix) > 0, f"prefix length {len(prefix)} error"
         obj = radix(prefix=prefix, root=self)
         obj.__tack = True
         tmp = self
@@ -358,7 +367,7 @@ class radix(Dict[str, VT]):
 
     def put(self, key: str, value: VT, modify: bool = True) -> bool:
         assert self.__test.check(key) and self.__check(key)
-        assert isinstance(modify, bool)
+        assert isinstance(modify, bool), f"unexpected type: {type(modify)}"
 
         obj: radix[VT] = self
 
@@ -386,10 +395,10 @@ class radix(Dict[str, VT]):
             return True
 
     def get(self, key: str) -> VT:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         obj: radix[VT] = self
         while True:
-            assert obj.__check(key)
+            assert obj.__check(key), f"check key '{key}' error"
             key = obj.__nickname(key)
             tmp = obj.__get_node(key)
             if isinstance(tmp, radix):
@@ -398,7 +407,8 @@ class radix(Dict[str, VT]):
             return obj.__leafs[key]
 
     def pop(self, key: str) -> bool:
-        assert isinstance(key, str) and self.__check(key)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
+        assert self.__check(key), f"check key '{key}' error"
         obj: radix[VT] = self
 
         while True:
@@ -421,7 +431,7 @@ class radix(Dict[str, VT]):
             return True
 
     def trim(self, key: str) -> int:
-        assert isinstance(key, str)
+        assert isinstance(key, str), f"unexpected type: {type(key)}"
         obj: radix[VT] = self
         sum: int = 0
 

@@ -31,8 +31,8 @@ def run_cmd(cmds: commands) -> int:
     root = ctrie(path=cmds.args.path, readonly=False)
     key: str = cmds.args.key[0]
     val: str = cmds.args.val[0]
-    assert isinstance(key, str)
-    assert isinstance(val, str)
+    assert isinstance(key, str), f"unexpected type: {type(key)}"
+    assert isinstance(val, str), f"unexpected type: {type(val)}"
     root[key] = val.encode(cmds.args.encode)
     return 0
 
