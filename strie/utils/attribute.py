@@ -3,7 +3,7 @@
 from urllib.parse import urljoin
 
 __name__ = "strie"
-__version__ = "0.1"
+__version__ = "0.2"
 __description__ = "Storage string trie."
 __url_home__ = "https://github.com/bondbox/strie/"
 __url_code__ = __url_home__
