@@ -64,6 +64,10 @@ class cache(Generic[KT, VT]):
         assert key not in self.__clfu, f"delete key '{key}',error"
         assert key not in self.__clru, f"delete key '{key}',error"
 
+    def clear(self):
+        self.__clru.clear()
+        self.__clfu.clear()
+
 
 class store(Dict[str, bytes]):
     """Store radix trees
@@ -270,6 +274,11 @@ class store(Dict[str, bytes]):
 
     def force_gc(self) -> bool:
         return self.__gc(force=True)
+
+    def clear(self) -> None:
+        self.__index.clear()
+        assert self.__ihdl.clear(), f"clear '{self.__name}' index file failed"
+        assert self.__dhdl.clear(), f"clear '{self.__name}' datas file failed"
 
     @classmethod
     def restore(cls, ipath: str, dpath: str) -> bool:
@@ -534,3 +543,10 @@ class ctrie:
         if not os.path.exists(file):
             assert nhdl.init(path=path, word=word, test=test)
         return os.path.isfile(file)
+
+    def clear(self):
+        self.__scache.clear()
+        self.__icache.clear()
+        self.__dcache.clear()
+        for name in self.__names:
+            self.__get_store(name).clear()

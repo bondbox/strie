@@ -29,32 +29,39 @@ class mhdl:
         assert isinstance(readonly, bool), f"unexpected type: {type(readonly)}"
         msize: int = len(magic)
         assert msize > 0, f"size {msize} error"
-
-        def open_check(readonly: bool) -> bool:
-            if not readonly:
-                # Check backup before writing
-                assert not os.path.exists(self.bakpath), \
-                    f"Backup {self.bakpath} exists"
-            return os.path.exists(self.path)
-
         self.__path: str = path
         self.__msize: int = msize
         self.__magic: bytes = magic
         self.__readonly: bool = readonly
-        create: bool = not open_check(readonly)  # Check backup before open
-        handle: BinaryIO = open(path, "rb" if self.readonly else "ab+")
-        if create and not self.readonly:
-            assert handle.write(self.__magic) == self.__msize
-        self.__handle: Optional[BinaryIO] = handle
-        self.__endpos: int = handle.seek(0, 2)
+        self.__handle: Optional[BinaryIO] = self.__open()
+        self.__endpos: int = self.__handle.seek(0, 2)
         assert self.check(), f"{self.__path} check failed"
 
     def __del__(self):
         assert self.close(), f"close '{self.path}' error"
 
+    def __open(self) -> BinaryIO:
+        if not self.readonly:  # Only check backup before writing
+            assert not os.path.exists(self.bakpath), \
+                f"Backup {self.bakpath} exists"
+        need_create: bool = not os.path.exists(self.path)
+        handle: BinaryIO = open(self.path, "rb" if self.readonly else "ab+")
+        if need_create and not self.readonly:
+            assert handle.write(self.magic) == self.msize
+        return handle
+
     def sync(self):
         if self.__handle is not None and not self.readonly:
             os.fsync(self.__handle)
+
+    def clear(self) -> bool:
+        assert not self.readonly, f"'{self.path}' is readonly"
+        assert self.close(), f"close '{self.path}' failed"
+        os.remove(self.path)
+        assert not os.path.exists(self.path), f"remove '{self.path}' failed"
+        self.__handle = self.__open()
+        self.__endpos = self.__handle.seek(0, 2)
+        return True
 
     def close(self) -> bool:
         if self.__handle is not None:
@@ -97,7 +104,7 @@ class mhdl:
             return False
         if self.__handle.seek(0, 0) != 0:
             return False
-        return self.__handle.read(self.__msize) == self.__magic
+        return self.__handle.read(self.msize) == self.magic
 
     @property
     def path(self) -> str:
